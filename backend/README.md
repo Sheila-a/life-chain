@@ -1,14 +1,45 @@
 ﻿# LifeChain Phase 1 Backend (NestJS)
 
-## Run
+## Run locally
 
 1. Copy `.env.example` to `.env` and set values.
 2. Install dependencies: `npm install`
 3. Start dev server: `npm run start:dev`
 
+## Environment variables
+
+- `PORT`: API port (Render sets this automatically)
+- `NODE_ENV`: `development` or `production`
+- `JWT_SECRET`: signing key for JWTs
+- `DATABASE_URL`: PostgreSQL connection string
+- `CORS_ORIGIN`: optional comma-separated allowed origins
+- `HEDERA_NETWORK`: `testnet` or `mainnet`
+- `HEDERA_OPERATOR_ID`: optional for live Hedera mode
+- `HEDERA_OPERATOR_KEY`: optional for live Hedera mode
+- `HEDERA_HCS_TOPIC_ID`: optional fixed HCS topic id
+- `VAULT_MASTER_KEY`: 32+ character secret for vault key wrapping
+
+## Render deployment
+
+This repo includes a root `render.yaml` Blueprint that creates:
+
+- `life-chain-db` (managed PostgreSQL)
+- `life-chain-backend` (NestJS web service)
+
+### Deploy steps
+
+1. Push this repo to GitHub.
+2. In Render, choose **New +** -> **Blueprint**.
+3. Select your repo and apply the blueprint.
+4. Set these backend environment variables in Render:
+   - `JWT_SECRET`
+   - `VAULT_MASTER_KEY`
+   - optional Hedera credentials for live mode
+5. Render injects `DATABASE_URL` automatically from the linked Postgres service.
+
 ## Notes
 
-- Uses SQLite (`lifechain.db`) for local prototype/hackathon flow.
+- Uses PostgreSQL and auto-creates tables at startup.
 - Hedera runs in mock mode when `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` are missing.
 - In live mode, startup creates or reuses an HCS topic for immutable logging.
 - API base prefix is `/api`.

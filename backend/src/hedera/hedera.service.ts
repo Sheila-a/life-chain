@@ -5,7 +5,7 @@ import {
   TopicCreateTransaction,
   TopicMessageSubmitTransaction
 } from '@hashgraph/sdk';
-import { SqliteService } from '../database/sqlite.service';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class HederaService {
@@ -13,7 +13,7 @@ export class HederaService {
   private topicId = '';
   private enabled = false;
 
-  constructor(private readonly db: SqliteService) {}
+  constructor(private readonly db: DatabaseService) {}
 
   async init(): Promise<void> {
     const operatorId = process.env.HEDERA_OPERATOR_ID;
@@ -68,31 +68,31 @@ export class HederaService {
   private async resolveTopicId(): Promise<string> {
     const explicit = process.env.HEDERA_HCS_TOPIC_ID;
     if (explicit) {
-      this.setMetadata('hcs_topic_id', explicit);
+      await this.setMetadata('hcs_topic_id', explicit);
       return explicit;
     }
 
-    const row = this.db.query<{ value: string }>('SELECT value FROM metadata WHERE key = ? LIMIT 1', ['hcs_topic_id'])[0];
+    const row = (await this.db.query<{ value: string }>('SELECT value FROM metadata WHERE key = ? LIMIT 1', ['hcs_topic_id']))[0];
     if (row?.value) {
       return row.value;
     }
 
     if (!this.enabled || !this.client) {
       const mockTopicId = `mock-topic-${Date.now()}`;
-      this.setMetadata('hcs_topic_id', mockTopicId);
+      await this.setMetadata('hcs_topic_id', mockTopicId);
       return mockTopicId;
     }
 
     const tx = await new TopicCreateTransaction().execute(this.client);
     const receipt = await tx.getReceipt(this.client);
     const topicId = receipt.topicId!.toString();
-    this.setMetadata('hcs_topic_id', topicId);
+    await this.setMetadata('hcs_topic_id', topicId);
     return topicId;
   }
 
-  private setMetadata(key: string, value: string): void {
+  private async setMetadata(key: string, value: string): Promise<void> {
     const now = new Date().toISOString();
-    this.db.run(
+    await this.db.run(
       `
       INSERT INTO metadata (key, value, created_at, updated_at)
       VALUES (?, ?, ?, ?)

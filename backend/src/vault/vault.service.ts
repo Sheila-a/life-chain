@@ -4,14 +4,14 @@
   Injectable,
   NotFoundException
 } from '@nestjs/common';
-import { SqliteService } from '../database/sqlite.service';
+import { DatabaseService } from '../database/database.service';
 import { HederaService } from '../hedera/hedera.service';
 import { EncryptionService } from '../encryption/encryption.service';
 
 @Injectable()
 export class VaultService {
   constructor(
-    private readonly db: SqliteService,
+    private readonly db: DatabaseService,
     private readonly hederaService: HederaService,
     private readonly encryptionService: EncryptionService
   ) {}
@@ -57,7 +57,7 @@ export class VaultService {
     });
 
     const createdAt = new Date().toISOString();
-    const insert = this.db.run(
+    const insert = await this.db.run(
       `
       INSERT INTO vaults (
         hospital_id,
@@ -98,13 +98,13 @@ export class VaultService {
     };
   }
 
-  releaseVault(idParam: string, user?: { hospitalId: number }) {
+  async releaseVault(idParam: string, user?: { hospitalId: number }) {
     const id = Number(idParam);
     if (!id) {
       throw new BadRequestException('Invalid vault id');
     }
 
-    const vault = this.db.query<{
+    const vault = (await this.db.query<{
       id: number;
       hospital_id: number;
       encrypted_content: string;
@@ -115,7 +115,7 @@ export class VaultService {
       release_time: string;
       hfs_file_id: string;
       hcs_tx_id: string;
-    }>('SELECT * FROM vaults WHERE id = ? LIMIT 1', [id])[0];
+    }>('SELECT * FROM vaults WHERE id = ? LIMIT 1', [id]))[0];
 
     if (!vault) {
       throw new NotFoundException('Vault not found');
