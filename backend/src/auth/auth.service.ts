@@ -1,6 +1,6 @@
-﻿import { ConflictException, Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { ConflictException, Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
 import { SqliteService } from '../database/sqlite.service';
 
 @Injectable()
@@ -63,3 +63,4 @@ export class AuthService {
     return { token };
   }
 }
+
