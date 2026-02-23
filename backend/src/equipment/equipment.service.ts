@@ -1,15 +1,15 @@
 ﻿import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
-import { SqliteService } from '../database/sqlite.service';
+import { DatabaseService } from '../database/database.service';
 import { HederaService } from '../hedera/hedera.service';
 
 @Injectable()
 export class EquipmentService {
   constructor(
-    private readonly db: SqliteService,
+    private readonly db: DatabaseService,
     private readonly hederaService: HederaService
   ) {}
 
-  createSlot(body: { hospitalId?: number; slotType?: string; slotTime?: string }, user?: { hospitalId: number }) {
+  async createSlot(body: { hospitalId?: number; slotType?: string; slotTime?: string }, user?: { hospitalId: number }) {
     const hospitalId = Number(body.hospitalId ?? user?.hospitalId);
     const slotType = body.slotType ?? 'MRI';
     const slotTime = body.slotTime;
@@ -20,7 +20,7 @@ export class EquipmentService {
 
     const createdAt = new Date().toISOString();
     const status = 'available';
-    const result = this.db.run(
+    const result = await this.db.run(
       'INSERT INTO equipment_slots (hospital_id, slot_type, slot_time, status, created_at) VALUES (?, ?, ?, ?, ?)',
       [hospitalId, slotType, slotTime, status, createdAt]
     );
@@ -35,7 +35,7 @@ export class EquipmentService {
     };
   }
 
-  listSlots(hospitalId?: string, onlyAvailable?: string) {
+  async listSlots(hospitalId?: string, onlyAvailable?: string) {
     let sql = `
       SELECT es.id, es.hospital_id, h.name AS hospital_name, es.slot_type, es.slot_time, es.status, es.created_at
       FROM equipment_slots es
@@ -65,7 +65,7 @@ export class EquipmentService {
       throw new BadRequestException('hospitalId and slotId are required');
     }
 
-    const update = this.db.run(
+    const update = await this.db.run(
       "UPDATE equipment_slots SET status = 'booked' WHERE id = ? AND status = 'available'",
       [slotId]
     );
@@ -75,7 +75,7 @@ export class EquipmentService {
     }
 
     const bookedAt = new Date().toISOString();
-    const bookingInsert = this.db.run(
+    const bookingInsert = await this.db.run(
       'INSERT INTO bookings (slot_id, hospital_id, booked_at) VALUES (?, ?, ?)',
       [slotId, hospitalId, bookedAt]
     );
@@ -90,7 +90,7 @@ export class EquipmentService {
       bookedAt
     });
 
-    this.db.run('UPDATE bookings SET hedera_tx_id = ? WHERE id = ?', [hcs.txId, bookingId]);
+    await this.db.run('UPDATE bookings SET hedera_tx_id = ? WHERE id = ?', [hcs.txId, bookingId]);
 
     return {
       id: bookingId,

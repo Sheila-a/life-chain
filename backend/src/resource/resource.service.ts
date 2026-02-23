@@ -1,11 +1,11 @@
 ﻿import { BadRequestException, Injectable } from '@nestjs/common';
-import { SqliteService } from '../database/sqlite.service';
+import { DatabaseService } from '../database/database.service';
 import { HederaService } from '../hedera/hedera.service';
 
 @Injectable()
 export class ResourceService {
   constructor(
-    private readonly db: SqliteService,
+    private readonly db: DatabaseService,
     private readonly hederaService: HederaService
   ) {}
 
@@ -22,7 +22,7 @@ export class ResourceService {
     }
 
     const timestamp = new Date().toISOString();
-    const result = this.db.run(
+    const result = await this.db.run(
       'INSERT INTO resource_updates (hospital_id, resource_type, quantity, timestamp) VALUES (?, ?, ?, ?)',
       [hospitalId, resourceType, quantity, timestamp]
     );
@@ -38,7 +38,7 @@ export class ResourceService {
       timestamp
     });
 
-    this.db.run('UPDATE resource_updates SET hedera_tx_id = ? WHERE id = ?', [hcs.txId, updateId]);
+    await this.db.run('UPDATE resource_updates SET hedera_tx_id = ? WHERE id = ?', [hcs.txId, updateId]);
 
     return {
       id: updateId,
@@ -51,7 +51,7 @@ export class ResourceService {
     };
   }
 
-  searchResources(resourceType?: string, hospitalId?: string) {
+  async searchResources(resourceType?: string, hospitalId?: string) {
     let sql = `
       SELECT ru.id, ru.hospital_id, h.name AS hospital_name, ru.resource_type, ru.quantity, ru.timestamp, ru.hedera_tx_id
       FROM resource_updates ru

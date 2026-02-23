@@ -7,6 +7,13 @@ import { HederaService } from './hedera/hedera.service';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(helmet());
+
+  const corsOrigin = process.env.CORS_ORIGIN;
+  app.enableCors({
+    origin: corsOrigin ? corsOrigin.split(',').map((origin) => origin.trim()) : true,
+    credentials: true
+  });
+
   app.setGlobalPrefix('api');
 
   const hederaService = app.get(HederaService);

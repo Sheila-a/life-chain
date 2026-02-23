@@ -1,11 +1,11 @@
-import { ConflictException, Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+﻿import { ConflictException, Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { SqliteService } from '../database/sqlite.service';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly db: SqliteService) {}
+  constructor(private readonly db: DatabaseService) {}
 
   async registerHospital(payload: { name?: string; email?: string; password?: string }) {
     const { name, email, password } = payload;
@@ -13,14 +13,14 @@ export class AuthService {
       throw new BadRequestException('name, email, and password are required');
     }
 
-    const existing = this.db.query('SELECT id FROM hospitals WHERE email = ? LIMIT 1', [email])[0];
+    const existing = (await this.db.query('SELECT id FROM hospitals WHERE email = ? LIMIT 1', [email]))[0];
     if (existing) {
       throw new ConflictException('Hospital with this email already exists');
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
-    const result = this.db.run(
+    const result = await this.db.run(
       'INSERT INTO hospitals (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
       [name, email, passwordHash, createdAt]
     );
@@ -39,11 +39,11 @@ export class AuthService {
       throw new BadRequestException('email and password are required');
     }
 
-    const hospital = this.db.query<{
+    const hospital = (await this.db.query<{
       id: number;
       email: string;
       password_hash: string;
-    }>('SELECT id, email, password_hash FROM hospitals WHERE email = ? LIMIT 1', [email])[0];
+    }>('SELECT id, email, password_hash FROM hospitals WHERE email = ? LIMIT 1', [email]))[0];
 
     if (!hospital) {
       throw new UnauthorizedException('Invalid credentials');
@@ -63,4 +63,3 @@ export class AuthService {
     return { token };
   }
 }
-
