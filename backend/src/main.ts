@@ -16,6 +16,9 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  // Ensure module lifecycle hooks (including DB schema init) run before custom startup logic.
+  await app.init();
+
   const hederaService = app.get(HederaService);
   await hederaService.init();
 
