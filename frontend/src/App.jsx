@@ -1,35 +1,48 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useEffect, useState } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
+import NProgress from "nprogress";
+import Loading from "./components/skeletons/Loading";
+import PublicRoute from "./routes/PublicRoute";
+import PrivateRoute from "./routes/PrivateRoute";
+import HomePage from "./pages/Home";
+import HospitalLogin from "./pages/HospitalLogin";
+import HospitalRegister from "./pages/HospitalRegister";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
+  // const [isExpanded, setIsExpanded] = useState(true);
+
+  useEffect(() => {
+    NProgress.start();
+    setLoading(true);
+
+    const timeout = setTimeout(() => {
+      NProgress.done();
+      setLoading(false);
+    }, 5);
+
+    return () => clearTimeout(timeout);
+  }, [location.pathname]);
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      {loading ? (
+        <Loading />
+      ) : (
+        <Routes>
+          <Route path="/" element={<PublicRoute />}>
+            <Route path="" element={<HomePage />} />
+            <Route path="portal" element={<HospitalLogin />} />
+            <Route path="portal/new" element={<HospitalRegister />} />
+            {/* <Route path="create-account" element={<Register />} />
+            <Route path="verify" element={<VerifyOtp />} /> */}
+          </Route>
+        </Routes>
+      )}
     </>
-  )
+  );
 }
 
-export default App
+export default App;

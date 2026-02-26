@@ -10,9 +10,6 @@ import { Input2 } from "./Input";
 import CustomUploadButton from "./Upload";
 import Table from "./Table";
 import Toggle from "./Toggle";
-import PaymentFinal from "./PaymentFinal";
-import CountdownCard from "./CountdownCard";
-import ComplianceOverview from "./ComplianceCards";
 
 export {
   CustomToastContainer,
@@ -27,7 +24,4 @@ export {
   CustomUploadButton,
   Table,
   Toggle,
-  PaymentFinal,
-  CountdownCard,
-  ComplianceOverview,
 };

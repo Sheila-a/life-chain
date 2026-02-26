@@ -53,7 +53,8 @@ export default function HomePage() {
           </Button>
           <Button
             variant="outline"
-            className="rounded-2xl px-10 py-7 text-xl border-emerald-300 text-emerald-200"
+            href={`/portal`}
+            className="rounded-2xl px-10 py-7 text-xl border-emerald-300 hover:scale-105 text-emerald-200"
             icon={<ArrowRight className="ml-2" />}
             iconPosBack={true}
           >
