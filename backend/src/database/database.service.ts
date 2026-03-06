@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Pool, QueryResultRow } from 'pg';
 
 export type RunResult = {
   changes: number;
@@ -21,7 +21,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
+  async query<T extends QueryResultRow = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
     this.ensureInitialized();
     const result = await this.pool.query<T>(this.toPostgresSql(sql), params);
     return result.rows;
@@ -82,6 +82,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        lat DOUBLE PRECISION NOT NULL,
+        long DOUBLE PRECISION NOT NULL,
         created_at TIMESTAMPTZ NOT NULL
       );
 
@@ -124,6 +126,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         hcs_tx_id TEXT,
         created_at TIMESTAMPTZ NOT NULL
       );
+
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS long DOUBLE PRECISION;
     `);
   }
 }

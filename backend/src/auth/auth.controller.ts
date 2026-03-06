@@ -6,7 +6,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register-hospital')
-  register(@Body() body: { name?: string; email?: string; password?: string }) {
+  register(@Body() body: { name?: string; email?: string; password?: string; lat?: number; long?: number }) {
     return this.authService.registerHospital(body);
   }
 
