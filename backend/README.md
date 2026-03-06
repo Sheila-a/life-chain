@@ -47,6 +47,7 @@ This repo includes a root `render.yaml` Blueprint that creates:
 ## API Endpoints
 
 - `POST /api/register-hospital`
+  - required body fields: `name`, `email`, `password`, `lat`, `long`
 - `POST /api/login`
 - `POST /api/resource/update`
 - `GET /api/resources/search`

@@ -82,6 +82,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        lat DOUBLE PRECISION NOT NULL,
+        long DOUBLE PRECISION NOT NULL,
         created_at TIMESTAMPTZ NOT NULL
       );
 
@@ -124,6 +126,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         hcs_tx_id TEXT,
         created_at TIMESTAMPTZ NOT NULL
       );
+
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS long DOUBLE PRECISION;
     `);
   }
 }

@@ -7,10 +7,16 @@ import { DatabaseService } from '../database/database.service';
 export class AuthService {
   constructor(private readonly db: DatabaseService) {}
 
-  async registerHospital(payload: { name?: string; email?: string; password?: string }) {
-    const { name, email, password } = payload;
-    if (!name || !email || !password) {
-      throw new BadRequestException('name, email, and password are required');
+  async registerHospital(payload: { name?: string; email?: string; password?: string; lat?: number; long?: number }) {
+    const { name, email, password, lat, long } = payload;
+    if (!name || !email || !password || lat === undefined || long === undefined) {
+      throw new BadRequestException('name, email, password, lat, and long are required');
+    }
+
+    const latitude = Number(lat);
+    const longitude = Number(long);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      throw new BadRequestException('lat and long must be valid numbers');
     }
 
     const existing = (await this.db.query('SELECT id FROM hospitals WHERE email = ? LIMIT 1', [email]))[0];
@@ -21,14 +27,16 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
     const result = await this.db.run(
-      'INSERT INTO hospitals (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
-      [name, email, passwordHash, createdAt]
+      'INSERT INTO hospitals (name, email, password_hash, lat, long, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, passwordHash, latitude, longitude, createdAt]
     );
 
     return {
       id: Number(result.lastInsertRowid),
       name,
       email,
+      lat: latitude,
+      long: longitude,
       createdAt
     };
   }
