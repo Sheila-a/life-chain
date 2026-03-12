@@ -36,11 +36,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const executableSql = isInsert && !hasReturning ? `${baseSql} RETURNING *` : baseSql;
 
     const result = await this.pool.query<Record<string, unknown>>(executableSql, params);
-    const insertedId = result.rows[0]?.id;
+    const insertedId = this.parseInsertedId(result.rows[0]?.id);
 
     return {
       changes: result.rowCount ?? 0,
-      lastInsertRowid: typeof insertedId === 'number' ? insertedId : null
+      lastInsertRowid: insertedId
     };
   }
 
@@ -66,6 +66,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       index += 1;
       return `$${index}`;
     });
+  }
+
+  private parseInsertedId(value: unknown): number | null {
+    if (typeof value === 'number') {
+      return Number.isSafeInteger(value) ? value : null;
+    }
+
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) ? parsed : null;
+    }
+
+    return null;
   }
 
   private async initSchema(): Promise<void> {
@@ -104,6 +117,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TIMESTAMPTZ NOT NULL,
         UNIQUE (hospital_id, resource_type)
       );
+
+      CREATE INDEX IF NOT EXISTS idx_hospital_resources_resource_type_hospital_id
+      ON hospital_resources (resource_type, hospital_id);
+
+      CREATE INDEX IF NOT EXISTS idx_hospitals_lat_long
+      ON hospitals (lat, long);
 
       CREATE TABLE IF NOT EXISTS equipment_slots (
         id BIGSERIAL PRIMARY KEY,

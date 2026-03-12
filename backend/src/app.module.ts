@@ -1,5 +1,6 @@
 ﻿import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { EquipmentModule } from './equipment/equipment.module';
@@ -14,6 +15,7 @@ import { JwtAuthGuard } from './common/jwt-auth.guard';
     DatabaseModule,
     HederaModule,
     EncryptionModule,
+    AuditModule,
     AuthModule,
     ResourceModule,
     EquipmentModule,
