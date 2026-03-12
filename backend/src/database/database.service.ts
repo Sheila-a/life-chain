@@ -96,6 +96,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         hedera_tx_id TEXT
       );
 
+      CREATE TABLE IF NOT EXISTS hospital_resources (
+        id BIGSERIAL PRIMARY KEY,
+        hospital_id BIGINT NOT NULL REFERENCES hospitals(id),
+        resource_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        UNIQUE (hospital_id, resource_type)
+      );
+
       CREATE TABLE IF NOT EXISTS equipment_slots (
         id BIGSERIAL PRIMARY KEY,
         hospital_id BIGINT NOT NULL REFERENCES hospitals(id),
@@ -129,6 +138,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
       ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS long DOUBLE PRECISION;
+
+      INSERT INTO hospital_resources (hospital_id, resource_type, quantity, updated_at)
+      SELECT DISTINCT ON (ru.hospital_id, ru.resource_type)
+        ru.hospital_id,
+        ru.resource_type,
+        ru.quantity,
+        ru.timestamp
+      FROM resource_updates ru
+      ORDER BY ru.hospital_id, ru.resource_type, ru.timestamp DESC, ru.id DESC
+      ON CONFLICT (hospital_id, resource_type)
+      DO UPDATE SET
+        quantity = EXCLUDED.quantity,
+        updated_at = EXCLUDED.updated_at;
     `);
   }
 }
