@@ -118,6 +118,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         UNIQUE (hospital_id, resource_type)
       );
 
+      CREATE INDEX IF NOT EXISTS idx_hospital_resources_resource_type_hospital_id
+      ON hospital_resources (resource_type, hospital_id);
+
+      CREATE INDEX IF NOT EXISTS idx_hospitals_lat_long
+      ON hospitals (lat, long);
+
       CREATE TABLE IF NOT EXISTS equipment_slots (
         id BIGSERIAL PRIMARY KEY,
         hospital_id BIGINT NOT NULL REFERENCES hospitals(id),

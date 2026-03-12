@@ -1,6 +1,7 @@
 ﻿import { Injectable } from '@nestjs/common';
 import {
   Client,
+  FileId,
   FileCreateTransaction,
   TopicId,
   TopicCreateTransaction,
@@ -10,6 +11,10 @@ import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class HederaService {
+  private readonly hashscanBaseUrls = {
+    mainnet: 'https://hashscan.io/mainnet',
+    testnet: 'https://hashscan.io/testnet'
+  } as const;
   private client: Client | null = null;
   private topicId = '';
   private enabled = false;
@@ -66,6 +71,42 @@ export class HederaService {
     };
   }
 
+  async getStoredTopicId(): Promise<string | null> {
+    if (this.topicId) {
+      return this.topicId;
+    }
+
+    const row = (
+      await this.db.query<{ value: string }>('SELECT value FROM metadata WHERE key = ? LIMIT 1', ['hcs_topic_id'])
+    )[0];
+
+    return row?.value ?? null;
+  }
+
+  getHashscanTopicUrl(topicId: string | null): string | null {
+    if (!topicId || !this.isValidTopicId(topicId)) {
+      return null;
+    }
+
+    return `${this.getHashscanBaseUrl()}/topic/${topicId}`;
+  }
+
+  getHashscanTransactionUrl(transactionId: string | null): string | null {
+    if (!transactionId) {
+      return null;
+    }
+
+    return `${this.getHashscanBaseUrl()}/transaction/${encodeURIComponent(transactionId)}`;
+  }
+
+  getHashscanFileUrl(fileId: string | null): string | null {
+    if (!fileId || !this.isValidFileId(fileId)) {
+      return null;
+    }
+
+    return `${this.getHashscanBaseUrl()}/file/${fileId}`;
+  }
+
   private async resolveTopicId(): Promise<string> {
     const explicit = process.env.HEDERA_HCS_TOPIC_ID;
     if (explicit) {
@@ -94,9 +135,23 @@ export class HederaService {
     return topicId;
   }
 
+  private getHashscanBaseUrl(): string {
+    const network = (process.env.HEDERA_NETWORK ?? 'testnet').toLowerCase() === 'mainnet' ? 'mainnet' : 'testnet';
+    return this.hashscanBaseUrls[network];
+  }
+
   private isValidTopicId(value: string): boolean {
     try {
       TopicId.fromString(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private isValidFileId(value: string): boolean {
+    try {
+      FileId.fromString(value);
       return true;
     } catch {
       return false;

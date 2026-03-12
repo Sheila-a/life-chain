@@ -56,6 +56,8 @@ This repo includes a root `render.yaml` Blueprint that creates:
   - updates the current quantity for an existing hospital resource
 - `GET /api/resources/search`
   - returns current hospital inventory
+- `GET /api/resources/nearest`
+  - returns nearby hospitals with positive stock for the requested resource
 - `GET /api/resource-updates/search`
   - returns resource update history
 - `POST /api/equipment/create`
@@ -63,3 +65,9 @@ This repo includes a root `render.yaml` Blueprint that creates:
 - `POST /api/booking/create`
 - `POST /api/vault/upload`
 - `GET /api/vault/release/:id`
+- `GET /api/audit/resources/:id`
+  - returns explorer-ready resource audit data
+- `GET /api/audit/bookings/:id`
+  - returns explorer-ready booking audit data
+- `GET /api/audit/vaults/:id`
+  - returns explorer-ready vault audit data

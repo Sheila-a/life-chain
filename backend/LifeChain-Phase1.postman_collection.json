@@ -193,6 +193,46 @@
           }
         },
         {
+          "name": "Search Nearest Resources",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/nearest?resourceType=MRI&lat=6.5244&long=3.3792&radiusKm=50&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "resources",
+                "nearest"
+              ],
+              "query": [
+                {
+                  "key": "resourceType",
+                  "value": "MRI"
+                },
+                {
+                  "key": "lat",
+                  "value": "6.5244"
+                },
+                {
+                  "key": "long",
+                  "value": "3.3792"
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "50"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Public endpoint. Returns nearby hospitals with positive stock for the requested resource, ordered by distance."
+          }
+        },
+        {
           "name": "Search Resource Updates",
           "request": {
             "method": "GET",
@@ -214,6 +254,69 @@
               ]
             },
             "description": "Public endpoint. Returns resource update history. Optional query params: `resourceType`, `hospitalId`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit",
+      "description": "Explorer-ready audit endpoints for resources, bookings, and vaults.",
+      "item": [
+        {
+          "name": "Get Resource Audit",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/resources/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                "resources",
+                "1"
+              ]
+            },
+            "description": "Public endpoint. Returns stored Hedera ids plus HashScan-ready links for a resource update."
+          }
+        },
+        {
+          "name": "Get Booking Audit",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/bookings/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                "bookings",
+                "1"
+              ]
+            },
+            "description": "Public endpoint. Returns stored Hedera ids plus HashScan-ready links for a booking."
+          }
+        },
+        {
+          "name": "Get Vault Audit",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/vaults/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                "vaults",
+                "1"
+              ]
+            },
+            "description": "Public endpoint. Returns stored Hedera ids plus HashScan-ready links for a vault record."
           }
         }
       ]

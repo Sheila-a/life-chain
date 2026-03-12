@@ -16,7 +16,9 @@ export class JwtAuthGuard implements CanActivate {
       request.path === '/api/login' ||
       request.path === '/api/register-hospital' ||
       request.path === '/api/resources/search' ||
+      request.path === '/api/resources/nearest' ||
       request.path === '/api/resource-updates/search' ||
+      request.path.startsWith('/api/audit/') ||
       request.path === '/api/equipment/list'
     ) {
       return true;

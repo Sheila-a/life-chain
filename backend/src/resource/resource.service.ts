@@ -65,6 +65,105 @@ export class ResourceService {
     return this.db.query(sql, params);
   }
 
+  async searchNearestResources(
+    resourceType?: string,
+    lat?: string,
+    long?: string,
+    radiusKm?: string,
+    limit?: string
+  ) {
+    const normalizedType = resourceType?.trim();
+    const latitude = Number(lat);
+    const longitude = Number(long);
+    const maxRadiusKm = radiusKm ? Number(radiusKm) : 50;
+    const maxResults = limit ? Number(limit) : 10;
+
+    if (!normalizedType || Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      throw new BadRequestException('resourceType, lat, and long are required');
+    }
+
+    if (Number.isNaN(maxRadiusKm) || maxRadiusKm <= 0) {
+      throw new BadRequestException('radiusKm must be a positive number');
+    }
+
+    if (Number.isNaN(maxResults) || maxResults <= 0) {
+      throw new BadRequestException('limit must be a positive number');
+    }
+
+    const safeLimit = Math.min(Math.trunc(maxResults), 50);
+    const sql = `
+      SELECT
+        hr.hospital_id AS "hospitalId",
+        h.name AS "hospitalName",
+        hr.resource_type AS "resourceType",
+        hr.quantity,
+        h.lat,
+        h.long,
+        (
+          6371 * ACOS(
+            LEAST(
+              1,
+              GREATEST(
+                -1,
+                COS(RADIANS(CAST(? AS DOUBLE PRECISION))) * COS(RADIANS(h.lat)) *
+                COS(RADIANS(h.long) - RADIANS(CAST(? AS DOUBLE PRECISION))) +
+                SIN(RADIANS(CAST(? AS DOUBLE PRECISION))) * SIN(RADIANS(h.lat))
+              )
+            )
+          )
+        ) AS "distanceKm",
+        hr.updated_at AS "updatedAt"
+      FROM hospital_resources hr
+      INNER JOIN hospitals h ON h.id = hr.hospital_id
+      WHERE hr.resource_type = ?
+        AND hr.quantity > 0
+        AND (
+          6371 * ACOS(
+            LEAST(
+              1,
+              GREATEST(
+                -1,
+                COS(RADIANS(CAST(? AS DOUBLE PRECISION))) * COS(RADIANS(h.lat)) *
+                COS(RADIANS(h.long) - RADIANS(CAST(? AS DOUBLE PRECISION))) +
+                SIN(RADIANS(CAST(? AS DOUBLE PRECISION))) * SIN(RADIANS(h.lat))
+              )
+            )
+          )
+        ) <= CAST(? AS DOUBLE PRECISION)
+      ORDER BY
+        (
+          6371 * ACOS(
+            LEAST(
+              1,
+              GREATEST(
+                -1,
+                COS(RADIANS(CAST(? AS DOUBLE PRECISION))) * COS(RADIANS(h.lat)) *
+                COS(RADIANS(h.long) - RADIANS(CAST(? AS DOUBLE PRECISION))) +
+                SIN(RADIANS(CAST(? AS DOUBLE PRECISION))) * SIN(RADIANS(h.lat))
+              )
+            )
+          )
+        ) ASC,
+        hr.quantity DESC
+      LIMIT CAST(? AS INTEGER)
+    `;
+
+    return this.db.query(sql, [
+      latitude,
+      longitude,
+      latitude,
+      normalizedType,
+      latitude,
+      longitude,
+      latitude,
+      maxRadiusKm,
+      latitude,
+      longitude,
+      latitude,
+      safeLimit
+    ]);
+  }
+
   async searchResourceUpdates(resourceType?: string, hospitalId?: string) {
     let sql = `
       SELECT ru.id, ru.hospital_id, h.name AS hospital_name, ru.resource_type, ru.quantity, ru.timestamp, ru.hedera_tx_id

@@ -97,6 +97,27 @@ export class ResourceController {
     return this.resourceService.searchResources(resourceType, hospitalId);
   }
 
+  @Get('resources/nearest')
+  @ApiOperation({ summary: 'Search Nearest Resources' })
+  @ApiQuery({ name: 'resourceType', required: true, example: 'MRI' })
+  @ApiQuery({ name: 'lat', required: true, example: '6.5244' })
+  @ApiQuery({ name: 'long', required: true, example: '3.3792' })
+  @ApiQuery({ name: 'radiusKm', required: false, example: '50' })
+  @ApiQuery({ name: 'limit', required: false, example: '10' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns nearby hospitals with positive stock for the requested resource, ordered by distance.'
+  })
+  searchNearestResources(
+    @Query('resourceType') resourceType?: string,
+    @Query('lat') lat?: string,
+    @Query('long') long?: string,
+    @Query('radiusKm') radiusKm?: string,
+    @Query('limit') limit?: string
+  ) {
+    return this.resourceService.searchNearestResources(resourceType, lat, long, radiusKm, limit);
+  }
+
   @Get('resource-updates/search')
   @ApiOperation({ summary: 'Search Resource Updates' })
   @ApiQuery({ name: 'resourceType', required: false, example: 'MRI' })
