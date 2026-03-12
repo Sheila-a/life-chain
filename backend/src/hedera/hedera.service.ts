@@ -2,6 +2,7 @@
 import {
   Client,
   FileCreateTransaction,
+  TopicId,
   TopicCreateTransaction,
   TopicMessageSubmitTransaction
 } from '@hashgraph/sdk';
@@ -68,12 +69,15 @@ export class HederaService {
   private async resolveTopicId(): Promise<string> {
     const explicit = process.env.HEDERA_HCS_TOPIC_ID;
     if (explicit) {
+      if (!this.isValidTopicId(explicit)) {
+        throw new Error(`HEDERA_HCS_TOPIC_ID is not a valid Hedera topic id: ${explicit}`);
+      }
       await this.setMetadata('hcs_topic_id', explicit);
       return explicit;
     }
 
     const row = (await this.db.query<{ value: string }>('SELECT value FROM metadata WHERE key = ? LIMIT 1', ['hcs_topic_id']))[0];
-    if (row?.value) {
+    if (row?.value && (!this.enabled || this.isValidTopicId(row.value))) {
       return row.value;
     }
 
@@ -88,6 +92,15 @@ export class HederaService {
     const topicId = receipt.topicId!.toString();
     await this.setMetadata('hcs_topic_id', topicId);
     return topicId;
+  }
+
+  private isValidTopicId(value: string): boolean {
+    try {
+      TopicId.fromString(value);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private async setMetadata(key: string, value: string): Promise<void> {
