@@ -1,0 +1,379 @@
+{
+  "info": {
+    "_postman_id": "dd114ccf-90d3-471c-bf16-5e0d3ec8b0a8",
+    "name": "LifeChain Phase 1 API",
+    "description": "Postman collection for LifeChain Phase 1 (NestJS backend). Includes auth, resource registry, equipment booking, and vault endpoints with sample payloads.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "vaultId",
+      "value": "1"
+    },
+    {
+      "key": "slotId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Register and login as a hospital admin.",
+      "item": [
+        {
+          "name": "Register Hospital",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"City General Hospital\",\n  \"email\": \"admin@citygeneral.org\",\n  \"password\": \"StrongPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register-hospital",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "register-hospital"
+              ]
+            },
+            "description": "Creates a hospital admin account."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@citygeneral.org\",\n  \"password\": \"StrongPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            },
+            "description": "Authenticates and returns JWT token. Test script stores token in collection variable `token`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hospital Resource Registry",
+      "description": "Resource updates with Hedera consensus logging.",
+      "item": [
+        {
+          "name": "Create Resource Update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resourceType\": \"MRI\",\n  \"quantity\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resource-updates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "resource-updates"
+              ]
+            },
+            "description": "Creates a resource registry event, logs it to Hedera HCS, and updates current hospital inventory."
+          }
+        },
+        {
+          "name": "Update Resource Quantity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/MRI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "resources",
+                "MRI"
+              ]
+            },
+            "description": "Updates the current quantity for an existing hospital resource and records the change in resource update history."
+          }
+        },
+        {
+          "name": "Search Resources",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/search?resourceType=MRI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "resources",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "resourceType",
+                  "value": "MRI"
+                }
+              ]
+            },
+            "description": "Public endpoint. Returns current hospital inventory. Optional query params: `resourceType`, `hospitalId`."
+          }
+        },
+        {
+          "name": "Search Resource Updates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/resource-updates/search?resourceType=MRI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "resource-updates",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "resourceType",
+                  "value": "MRI"
+                }
+              ]
+            },
+            "description": "Public endpoint. Returns resource update history. Optional query params: `resourceType`, `hospitalId`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipment Sharing Simulation",
+      "description": "Create equipment slots, list, and book them with Hedera logging.",
+      "item": [
+        {
+          "name": "Create Equipment Slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotType\": \"MRI\",\n  \"slotTime\": \"2026-02-18T14:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment",
+                "create"
+              ]
+            },
+            "description": "Creates an available equipment slot."
+          }
+        },
+        {
+          "name": "List Equipment Slots",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/list?onlyAvailable=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "onlyAvailable",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Public endpoint. Optional query params: `hospitalId`, `onlyAvailable`."
+          }
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": {{slotId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/booking/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "create"
+              ]
+            },
+            "description": "Books an available slot, logs booking event to Hedera HCS, and stores tx ID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "AfterLife Vault Core",
+      "description": "Upload encrypted medical disclosure with timed release proof on Hedera.",
+      "item": [
+        {
+          "name": "Upload Vault Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Patient has severe penicillin allergy.\",\n  \"releaseTime\": \"2026-12-31T23:59:59.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/vault/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vault",
+                "upload"
+              ]
+            },
+            "description": "Encrypts content (AES-GCM), stores ciphertext only, anchors hash to HFS, logs proof to HCS."
+          }
+        },
+        {
+          "name": "Release Vault Entry",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vault/release/{{vaultId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vault",
+                "release",
+                "{{vaultId}}"
+              ]
+            },
+            "description": "Releases decrypted content only after release time and only for owning hospital."
+          }
+        }
+      ]
+    }
+  ]
+}

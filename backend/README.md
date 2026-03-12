@@ -43,14 +43,21 @@ This repo includes a root `render.yaml` Blueprint that creates:
 - Hedera runs in mock mode when `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` are missing.
 - In live mode, startup creates or reuses an HCS topic for immutable logging.
 - API base prefix is `/api`.
+- Swagger UI is available at `/api/docs`.
 
 ## API Endpoints
 
 - `POST /api/register-hospital`
   - required body fields: `name`, `email`, `password`, `lat`, `long`
 - `POST /api/login`
-- `POST /api/resource/update`
+- `POST /api/resource-updates`
+  - creates a resource registry event and updates current inventory
+- `PATCH /api/resources/:resourceType`
+  - updates the current quantity for an existing hospital resource
 - `GET /api/resources/search`
+  - returns current hospital inventory
+- `GET /api/resource-updates/search`
+  - returns resource update history
 - `POST /api/equipment/create`
 - `GET /api/equipment/list`
 - `POST /api/booking/create`
