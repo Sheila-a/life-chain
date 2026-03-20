@@ -97,6 +97,21 @@ export class ResourceController {
     return this.resourceService.searchResources(resourceType, hospitalId);
   }
 
+  @Get('resources/me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get My Resources' })
+  @ApiQuery({ name: 'resourceType', required: false, example: 'MRI' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns only the authenticated hospital admin resources.'
+  })
+  getMyResources(
+    @Query('resourceType') resourceType?: string,
+    @Req() req?: { user?: { hospitalId: number } }
+  ) {
+    return this.resourceService.getMyResources(req?.user, resourceType);
+  }
+
   @Get('resources/nearest')
   @ApiOperation({ summary: 'Search Nearest Resources' })
   @ApiQuery({ name: 'resourceType', required: true, example: 'MRI' })

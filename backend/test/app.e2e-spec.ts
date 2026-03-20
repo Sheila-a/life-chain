@@ -81,6 +81,42 @@ describe('LifeChain Phase 2 API', () => {
     expect(auditResponse.body.hashscanTransactionUrl).toContain('https://hashscan.io/testnet/transaction/');
   });
 
+  it('returns only the authenticated hospital resources from resources/me', async () => {
+    const city = await registerHospital(app, 'City General', 'city@example.org', 6.5244, 3.3792);
+    await registerHospital(app, 'Near Clinic', 'near@example.org', 6.6, 3.4);
+    const cityToken = await loginHospital(app, 'city@example.org');
+    const nearToken = await loginHospital(app, 'near@example.org');
+
+    await createResource(app, cityToken, 'MRI', 4);
+    await createResource(app, cityToken, 'Ventilator', 2);
+    await createResource(app, nearToken, 'MRI', 8);
+
+    const myResourcesResponse = await request(app.getHttpServer())
+      .get('/api/resources/me')
+      .set('Authorization', `Bearer ${cityToken}`)
+      .expect(200);
+
+    expect(myResourcesResponse.body).toHaveLength(2);
+    expect(myResourcesResponse.body.every((row: { hospital_id: number }) => row.hospital_id === city.id)).toBe(true);
+    expect(myResourcesResponse.body.every((row: { hederaTxId: string }) => row.hederaTxId.includes('0.0.7002@'))).toBe(true);
+
+    const filteredResponse = await request(app.getHttpServer())
+      .get('/api/resources/me')
+      .set('Authorization', `Bearer ${cityToken}`)
+      .query({ resourceType: 'MRI' })
+      .expect(200);
+
+    expect(filteredResponse.body).toHaveLength(1);
+    expect(filteredResponse.body[0]).toMatchObject({
+      hospital_id: city.id,
+      resource_type: 'MRI',
+      quantity: 4,
+      hederaTxId: expect.stringContaining('0.0.7002@')
+    });
+
+    await request(app.getHttpServer()).get('/api/resources/me').expect(401);
+  });
+
   it('returns nearest resources ordered by distance and then quantity, excluding zero stock', async () => {
     const city = await registerHospital(app, 'City General', 'city@example.org', 6.5244, 3.3792);
     const near = await registerHospital(app, 'Near Clinic', 'near@example.org', 6.5244, 3.3792);
