@@ -43,9 +43,26 @@ export class ResourceService {
 
   async searchResources(resourceType?: string, hospitalId?: string) {
     let sql = `
-      SELECT hr.id, hr.hospital_id, h.name AS hospital_name, hr.resource_type, hr.quantity, hr.updated_at
+      SELECT
+        hr.id,
+        hr.hospital_id,
+        h.name AS hospital_name,
+        hr.resource_type,
+        hr.quantity,
+        hr.updated_at,
+        latest_ru.hedera_tx_id AS "hederaTxId"
       FROM hospital_resources hr
       INNER JOIN hospitals h ON h.id = hr.hospital_id
+      LEFT JOIN (
+        SELECT DISTINCT ON (ru.hospital_id, ru.resource_type)
+          ru.hospital_id,
+          ru.resource_type,
+          ru.hedera_tx_id
+        FROM resource_updates ru
+        ORDER BY ru.hospital_id, ru.resource_type, ru.timestamp DESC, ru.id DESC
+      ) latest_ru
+        ON latest_ru.hospital_id = hr.hospital_id
+       AND latest_ru.resource_type = hr.resource_type
       WHERE 1=1
     `;
     const params: unknown[] = [];

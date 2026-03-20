@@ -98,6 +98,7 @@ describe('LifeChain Phase 2 API', () => {
 
     expect(myResourcesResponse.body).toHaveLength(2);
     expect(myResourcesResponse.body.every((row: { hospital_id: number }) => row.hospital_id === city.id)).toBe(true);
+    expect(myResourcesResponse.body.every((row: { hederaTxId: string }) => row.hederaTxId.includes('0.0.7002@'))).toBe(true);
 
     const filteredResponse = await request(app.getHttpServer())
       .get('/api/resources/me')
@@ -109,7 +110,8 @@ describe('LifeChain Phase 2 API', () => {
     expect(filteredResponse.body[0]).toMatchObject({
       hospital_id: city.id,
       resource_type: 'MRI',
-      quantity: 4
+      quantity: 4,
+      hederaTxId: expect.stringContaining('0.0.7002@')
     });
 
     await request(app.getHttpServer()).get('/api/resources/me').expect(401);
