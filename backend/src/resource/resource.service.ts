@@ -65,6 +65,15 @@ export class ResourceService {
     return this.db.query(sql, params);
   }
 
+  async getMyResources(user?: { hospitalId: number }, resourceType?: string) {
+    const hospitalId = Number(user?.hospitalId);
+    if (!hospitalId) {
+      throw new BadRequestException('Authenticated hospital context is required');
+    }
+
+    return this.searchResources(resourceType, String(hospitalId));
+  }
+
   async searchNearestResources(
     resourceType?: string,
     lat?: string,
