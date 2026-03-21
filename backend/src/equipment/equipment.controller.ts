@@ -49,6 +49,21 @@ export class EquipmentController {
     return this.equipmentService.listSlots(hospitalId, onlyAvailable);
   }
 
+  @Get('equipment/me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List My Equipment Slots' })
+  @ApiQuery({ name: 'onlyAvailable', required: false, example: 'true' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns only the authenticated hospital admin equipment slots, including the latest booking Hedera tx id when available.'
+  })
+  getMySlots(
+    @Query('onlyAvailable') onlyAvailable?: string,
+    @Req() req?: { user?: { hospitalId: number } }
+  ) {
+    return this.equipmentService.getMySlots(req?.user, onlyAvailable);
+  }
+
   @Post('booking/create')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create Booking' })

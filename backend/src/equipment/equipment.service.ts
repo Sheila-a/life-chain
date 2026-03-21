@@ -39,7 +39,21 @@ export class EquipmentService {
 
   async listSlots(hospitalId?: string, onlyAvailable?: string) {
     let sql = `
-      SELECT es.id, es.hospital_id, h.name AS hospital_name, es.slot_type, es.slot_time, es.status, es.created_at
+      SELECT
+        es.id,
+        es.hospital_id,
+        h.name AS hospital_name,
+        es.slot_type,
+        es.slot_time,
+        es.status,
+        es.created_at,
+        (
+          SELECT b.hedera_tx_id
+          FROM bookings b
+          WHERE b.slot_id = es.id
+          ORDER BY b.booked_at DESC, b.id DESC
+          LIMIT 1
+        ) AS "hederaTxId"
       FROM equipment_slots es
       INNER JOIN hospitals h ON h.id = es.hospital_id
       WHERE 1=1
@@ -57,6 +71,15 @@ export class EquipmentService {
 
     sql += ' ORDER BY es.slot_time ASC';
     return this.db.query(sql, params);
+  }
+
+  async getMySlots(user?: { hospitalId: number }, onlyAvailable?: string) {
+    const hospitalId = Number(user?.hospitalId);
+    if (!hospitalId) {
+      throw new BadRequestException('Authenticated hospital context is required');
+    }
+
+    return this.listSlots(String(hospitalId), onlyAvailable);
   }
 
   async createBooking(body: { hospitalId?: number; slotId?: number }, user?: { hospitalId: number }) {
