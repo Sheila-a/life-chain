@@ -19,8 +19,11 @@ export class AuditService {
         quantity: number;
         timestamp: string;
         hedera_tx_id: string | null;
+        kms_signature: string | null;
+        payload_hash: string | null;
+        kms_key_id: string | null;
       }>(
-        'SELECT id, hospital_id, resource_type, quantity, timestamp, hedera_tx_id FROM resource_updates WHERE id = ? LIMIT 1',
+        'SELECT id, hospital_id, resource_type, quantity, timestamp, hedera_tx_id, kms_signature, payload_hash, kms_key_id FROM resource_updates WHERE id = ? LIMIT 1',
         [id]
       )
     )[0];
@@ -40,10 +43,13 @@ export class AuditService {
       timestamp: record.timestamp,
       hederaTopicId: topicId,
       hederaTransactionId: record.hedera_tx_id,
+      signature: record.kms_signature,
+      payloadHash: record.payload_hash,
+      kmsKeyId: record.kms_key_id,
       hashscanTopicUrl: this.hederaService.getHashscanTopicUrl(topicId),
       hashscanTransactionUrl: this.hederaService.getHashscanTransactionUrl(record.hedera_tx_id),
       hashscanFileUrl: null,
-      auditStatus: record.hedera_tx_id ? 'verified-stored' : 'missing-hedera-reference'
+      auditStatus: record.hedera_tx_id && record.kms_signature ? 'verified-stored' : 'missing-hedera-reference'
     };
   }
 
@@ -56,8 +62,11 @@ export class AuditService {
         hospital_id: number;
         booked_at: string;
         hedera_tx_id: string | null;
+        kms_signature: string | null;
+        payload_hash: string | null;
+        kms_key_id: string | null;
       }>(
-        'SELECT id, slot_id, hospital_id, booked_at, hedera_tx_id FROM bookings WHERE id = ? LIMIT 1',
+        'SELECT id, slot_id, hospital_id, booked_at, hedera_tx_id, kms_signature, payload_hash, kms_key_id FROM bookings WHERE id = ? LIMIT 1',
         [id]
       )
     )[0];
@@ -76,10 +85,13 @@ export class AuditService {
       bookedAt: record.booked_at,
       hederaTopicId: topicId,
       hederaTransactionId: record.hedera_tx_id,
+      signature: record.kms_signature,
+      payloadHash: record.payload_hash,
+      kmsKeyId: record.kms_key_id,
       hashscanTopicUrl: this.hederaService.getHashscanTopicUrl(topicId),
       hashscanTransactionUrl: this.hederaService.getHashscanTransactionUrl(record.hedera_tx_id),
       hashscanFileUrl: null,
-      auditStatus: record.hedera_tx_id ? 'verified-stored' : 'missing-hedera-reference'
+      auditStatus: record.hedera_tx_id && record.kms_signature ? 'verified-stored' : 'missing-hedera-reference'
     };
   }
 

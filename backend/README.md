@@ -17,6 +17,11 @@
 - `HEDERA_OPERATOR_ID`: optional for live Hedera mode
 - `HEDERA_OPERATOR_KEY`: optional for live Hedera mode
 - `HEDERA_HCS_TOPIC_ID`: optional fixed HCS topic id
+- `AWS_REGION`: optional for live AWS KMS signing
+- `AWS_ACCESS_KEY_ID`: optional for live AWS KMS signing
+- `AWS_SECRET_ACCESS_KEY`: optional for live AWS KMS signing
+- `AWS_KMS_KEY_ID`: optional asymmetric KMS signing key id
+- `AWS_KMS_SIGNING_ALGORITHM`: optional, defaults to `ECDSA_SHA_256`
 - `VAULT_MASTER_KEY`: 32+ character secret for vault key wrapping
 
 ## Render deployment
@@ -41,6 +46,7 @@ This repo includes a root `render.yaml` Blueprint that creates:
 
 - Uses PostgreSQL and auto-creates tables at startup.
 - Hedera runs in mock mode when `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` are missing.
+- AWS KMS signing for resource updates and bookings runs in mock mode when AWS KMS credentials are missing.
 - In live mode, startup creates or reuses an HCS topic for immutable logging.
 - API base prefix is `/api`.
 - Swagger UI is available at `/api/docs`.
