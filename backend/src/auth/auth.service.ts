@@ -70,4 +70,81 @@ export class AuthService {
 
     return { token };
   }
+
+  async getMyProfile(user?: { hospitalId: number }) {
+    const hospitalId = Number(user?.hospitalId);
+    if (!hospitalId) {
+      throw new UnauthorizedException('Authenticated hospital context is required');
+    }
+
+    const hospital = await this.getHospitalById(hospitalId);
+    if (!hospital) {
+      throw new UnauthorizedException('Hospital account not found');
+    }
+
+    return this.toHospitalProfile(hospital);
+  }
+
+  async updateMyLocation(
+    payload: { lat?: number; long?: number },
+    user?: { hospitalId: number }
+  ) {
+    const hospitalId = Number(user?.hospitalId);
+    if (!hospitalId) {
+      throw new UnauthorizedException('Authenticated hospital context is required');
+    }
+
+    const latitude = Number(payload.lat);
+    const longitude = Number(payload.long);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      throw new BadRequestException('lat and long must be valid numbers');
+    }
+
+    await this.db.run('UPDATE hospitals SET lat = ?, long = ? WHERE id = ?', [
+      latitude,
+      longitude,
+      hospitalId
+    ]);
+
+    const hospital = await this.getHospitalById(hospitalId);
+
+    if (!hospital) {
+      throw new UnauthorizedException('Hospital account not found');
+    }
+
+    return this.toHospitalProfile(hospital);
+  }
+
+  private async getHospitalById(hospitalId: number) {
+    return (
+      await this.db.query<{
+        id: number;
+        name: string;
+        email: string;
+        lat: number;
+        long: number;
+        created_at: string;
+      }>('SELECT id, name, email, lat, long, created_at FROM hospitals WHERE id = ? LIMIT 1', [
+        hospitalId
+      ])
+    )[0];
+  }
+
+  private toHospitalProfile(hospital: {
+    id: number;
+    name: string;
+    email: string;
+    lat: number;
+    long: number;
+    created_at: string;
+  }) {
+    return {
+      id: Number(hospital.id),
+      name: hospital.name,
+      email: hospital.email,
+      lat: Number(hospital.lat),
+      long: Number(hospital.long),
+      createdAt: hospital.created_at
+    };
+  }
 }

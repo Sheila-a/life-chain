@@ -106,7 +106,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         resource_type TEXT NOT NULL,
         quantity INTEGER NOT NULL,
         timestamp TIMESTAMPTZ NOT NULL,
-        hedera_tx_id TEXT
+        hedera_tx_id TEXT,
+        kms_signature TEXT,
+        payload_hash TEXT,
+        kms_key_id TEXT
       );
 
       CREATE TABLE IF NOT EXISTS hospital_resources (
@@ -138,7 +141,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         slot_id BIGINT NOT NULL REFERENCES equipment_slots(id),
         hospital_id BIGINT NOT NULL REFERENCES hospitals(id),
         booked_at TIMESTAMPTZ NOT NULL,
-        hedera_tx_id TEXT
+        hedera_tx_id TEXT,
+        kms_signature TEXT,
+        payload_hash TEXT,
+        kms_key_id TEXT
       );
 
       CREATE TABLE IF NOT EXISTS vaults (
@@ -157,6 +163,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
       ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS long DOUBLE PRECISION;
+      ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS kms_signature TEXT;
+      ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS payload_hash TEXT;
+      ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_signature TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payload_hash TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
 
       INSERT INTO hospital_resources (hospital_id, resource_type, quantity, updated_at)
       SELECT DISTINCT ON (ru.hospital_id, ru.resource_type)

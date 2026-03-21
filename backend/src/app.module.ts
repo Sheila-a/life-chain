@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { EquipmentModule } from './equipment/equipment.module';
 import { HederaModule } from './hedera/hedera.module';
+import { KmsModule } from './kms/kms.module';
 import { ResourceModule } from './resource/resource.module';
 import { VaultModule } from './vault/vault.module';
 import { EncryptionModule } from './encryption/encryption.module';
@@ -14,6 +15,7 @@ import { JwtAuthGuard } from './common/jwt-auth.guard';
   imports: [
     DatabaseModule,
     HederaModule,
+    KmsModule,
     EncryptionModule,
     AuditModule,
     AuthModule,

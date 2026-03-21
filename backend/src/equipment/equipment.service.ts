@@ -1,16 +1,18 @@
-﻿import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { HederaService } from '../hedera/hedera.service';
+import { KmsService } from '../kms/kms.service';
 
 @Injectable()
 export class EquipmentService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly hederaService: HederaService
+    private readonly hederaService: HederaService,
+    private readonly kmsService: KmsService
   ) {}
 
   async createSlot(body: { hospitalId?: number; slotType?: string; slotTime?: string }, user?: { hospitalId: number }) {
-    const hospitalId = Number(body.hospitalId ?? user?.hospitalId);
+    const hospitalId = Number(user?.hospitalId ?? body.hospitalId);
     const slotType = body.slotType ?? 'MRI';
     const slotTime = body.slotTime;
 
@@ -58,7 +60,7 @@ export class EquipmentService {
   }
 
   async createBooking(body: { hospitalId?: number; slotId?: number }, user?: { hospitalId: number }) {
-    const hospitalId = Number(body.hospitalId ?? user?.hospitalId);
+    const hospitalId = Number(user?.hospitalId ?? body.hospitalId);
     const slotId = Number(body.slotId);
 
     if (!hospitalId || !slotId) {
@@ -81,8 +83,7 @@ export class EquipmentService {
     );
 
     const bookingId = Number(bookingInsert.lastInsertRowid);
-
-    const hcs = await this.hederaService.submitConsensusMessage({
+    const signedPayload = await this.kmsService.signPayload({
       eventType: 'EQUIPMENT_BOOKING',
       bookingId,
       hospitalId,
@@ -90,7 +91,21 @@ export class EquipmentService {
       bookedAt
     });
 
-    await this.db.run('UPDATE bookings SET hedera_tx_id = ? WHERE id = ?', [hcs.txId, bookingId]);
+    const hcs = await this.hederaService.submitConsensusMessage({
+      eventType: 'EQUIPMENT_BOOKING',
+      bookingId,
+      hospitalId,
+      slotId,
+      bookedAt,
+      signature: signedPayload.signature,
+      payloadHash: signedPayload.payloadHash,
+      kmsKeyId: signedPayload.kmsKeyId
+    });
+
+    await this.db.run(
+      'UPDATE bookings SET hedera_tx_id = ?, kms_signature = ?, payload_hash = ?, kms_key_id = ? WHERE id = ?',
+      [hcs.txId, signedPayload.signature, signedPayload.payloadHash, signedPayload.kmsKeyId, bookingId]
+    );
 
     return {
       id: bookingId,
@@ -98,7 +113,10 @@ export class EquipmentService {
       hospitalId,
       bookedAt,
       hederaTopicId: hcs.topicId,
-      hederaTxId: hcs.txId
+      hederaTxId: hcs.txId,
+      signature: signedPayload.signature,
+      payloadHash: signedPayload.payloadHash,
+      kmsKeyId: signedPayload.kmsKeyId
     };
   }
 }

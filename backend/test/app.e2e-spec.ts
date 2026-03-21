@@ -47,14 +47,19 @@ describe('LifeChain Phase 2 API', () => {
       .post('/api/resource-updates')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        hospitalId: hospital.id + 999,
         resourceType: 'AntiVenom',
         quantity: 3
       })
       .expect(201);
 
     expect(createResponse.body.id).toBeGreaterThan(0);
+    expect(createResponse.body.hospitalId).toBe(hospital.id);
     expect(createResponse.body.hederaTopicId).toBe('0.0.7001');
     expect(createResponse.body.hederaTxId).toContain('0.0.7002@');
+    expect(createResponse.body.signature).toBeTruthy();
+    expect(createResponse.body.payloadHash).toBeTruthy();
+    expect(createResponse.body.kmsKeyId).toBe('mock-kms-key');
 
     const patchResponse = await request(app.getHttpServer())
       .patch('/api/resources/AntiVenom')
@@ -75,6 +80,9 @@ describe('LifeChain Phase 2 API', () => {
       resourceType: 'AntiVenom',
       quantity: 3,
       hederaTopicId: '0.0.7001',
+      signature: createResponse.body.signature,
+      payloadHash: createResponse.body.payloadHash,
+      kmsKeyId: 'mock-kms-key',
       auditStatus: 'verified-stored'
     });
     expect(auditResponse.body.hashscanTopicUrl).toBe('https://hashscan.io/testnet/topic/0.0.7001');
@@ -176,6 +184,63 @@ describe('LifeChain Phase 2 API', () => {
       .expect(400);
   });
 
+  it('allows a hospital admin to update coordinates for their own hospital', async () => {
+    await registerHospital(app, 'City General', 'city@example.org', 6.5244, 3.3792);
+    await registerHospital(app, 'Legacy Hospital', 'legacy@example.org', 9.0765, 7.3986);
+
+    const legacyToken = await loginHospital(app, 'legacy@example.org');
+
+    const updateLocationResponse = await request(app.getHttpServer())
+      .patch('/api/hospitals/me/location')
+      .set('Authorization', `Bearer ${legacyToken}`)
+      .send({
+        lat: 6.5244,
+        long: 3.3792
+      })
+      .expect(200);
+
+    expect(updateLocationResponse.body).toMatchObject({
+      name: 'Legacy Hospital',
+      lat: 6.5244,
+      long: 3.3792
+    });
+
+    const hospitalRow = (
+      await db.query<{ lat: number; long: number }>(
+        'SELECT lat, long FROM hospitals WHERE email = ? LIMIT 1',
+        ['legacy@example.org']
+      )
+    )[0];
+
+    expect(Number(hospitalRow.lat)).toBe(6.5244);
+    expect(Number(hospitalRow.long)).toBe(3.3792);
+
+    await request(app.getHttpServer())
+      .patch('/api/hospitals/me/location')
+      .send({ lat: 6.5244, long: 3.3792 })
+      .expect(401);
+  });
+
+  it('returns the authenticated hospital admin profile details', async () => {
+    const hospital = await registerHospital(app, 'Profile Hospital', 'profile@example.org', 6.5244, 3.3792);
+    const token = await loginHospital(app, 'profile@example.org');
+
+    const profileResponse = await request(app.getHttpServer())
+      .get('/api/hospitals/me/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(profileResponse.body).toMatchObject({
+      id: hospital.id,
+      name: 'Profile Hospital',
+      email: 'profile@example.org',
+      lat: 6.5244,
+      long: 3.3792
+    });
+
+    await request(app.getHttpServer()).get('/api/hospitals/me/profile').expect(401);
+  });
+
   it('creates equipment, books it, and exposes booking audit data', async () => {
     await registerHospital(app, 'Owner Hospital', 'owner@example.org', 6.5, 3.3);
     await registerHospital(app, 'Booking Hospital', 'booker@example.org', 6.7, 3.4);
@@ -202,10 +267,14 @@ describe('LifeChain Phase 2 API', () => {
     const bookingResponse = await request(app.getHttpServer())
       .post('/api/booking/create')
       .set('Authorization', `Bearer ${bookerToken}`)
-      .send({ slotId: slotResponse.body.id })
+      .send({ hospitalId: 999999, slotId: slotResponse.body.id })
       .expect(201);
 
+    expect(bookingResponse.body.hospitalId).not.toBe(999999);
     expect(bookingResponse.body.hederaTxId).toContain('0.0.7002@');
+    expect(bookingResponse.body.signature).toBeTruthy();
+    expect(bookingResponse.body.payloadHash).toBeTruthy();
+    expect(bookingResponse.body.kmsKeyId).toBe('mock-kms-key');
 
     const auditResponse = await request(app.getHttpServer())
       .get(`/api/audit/bookings/${bookingResponse.body.id}`)
@@ -215,6 +284,9 @@ describe('LifeChain Phase 2 API', () => {
       id: bookingResponse.body.id,
       type: 'booking',
       slotId: slotResponse.body.id,
+      signature: bookingResponse.body.signature,
+      payloadHash: bookingResponse.body.payloadHash,
+      kmsKeyId: 'mock-kms-key',
       auditStatus: 'verified-stored'
     });
 

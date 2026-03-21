@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { HederaService } from '../hedera/hedera.service';
+import { KmsService } from '../kms/kms.service';
 
 type ResourceQuantityBody = {
   hospitalId?: number;
@@ -12,7 +13,8 @@ type ResourceQuantityBody = {
 export class ResourceService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly hederaService: HederaService
+    private readonly hederaService: HederaService,
+    private readonly kmsService: KmsService
   ) {}
 
   async createResourceUpdate(
@@ -192,7 +194,7 @@ export class ResourceService {
 
   async searchResourceUpdates(resourceType?: string, hospitalId?: string) {
     let sql = `
-      SELECT ru.id, ru.hospital_id, h.name AS hospital_name, ru.resource_type, ru.quantity, ru.timestamp, ru.hedera_tx_id
+      SELECT ru.id, ru.hospital_id, h.name AS hospital_name, ru.resource_type, ru.quantity, ru.timestamp, ru.hedera_tx_id, ru.kms_signature, ru.payload_hash, ru.kms_key_id
       FROM resource_updates ru
       INNER JOIN hospitals h ON h.id = ru.hospital_id
       WHERE 1=1
@@ -215,7 +217,7 @@ export class ResourceService {
   }
 
   private parseResourcePayload(body: ResourceQuantityBody, user?: { hospitalId: number }) {
-    const hospitalId = Number(body.hospitalId ?? user?.hospitalId);
+    const hospitalId = Number(user?.hospitalId ?? body.hospitalId);
     const resourceType = body.resourceType?.trim();
     const quantity = Number(body.quantity);
 
@@ -239,6 +241,14 @@ export class ResourceService {
     );
 
     const updateId = Number(result.lastInsertRowid);
+    const signedPayload = await this.kmsService.signPayload({
+      eventType,
+      updateId,
+      hospitalId,
+      resourceType,
+      quantity,
+      timestamp
+    });
 
     await this.db.run(
       `
@@ -256,10 +266,16 @@ export class ResourceService {
       hospitalId,
       resourceType,
       quantity,
-      timestamp
+      timestamp,
+      signature: signedPayload.signature,
+      payloadHash: signedPayload.payloadHash,
+      kmsKeyId: signedPayload.kmsKeyId
     });
 
-    await this.db.run('UPDATE resource_updates SET hedera_tx_id = ? WHERE id = ?', [hcs.txId, updateId]);
+    await this.db.run(
+      'UPDATE resource_updates SET hedera_tx_id = ?, kms_signature = ?, payload_hash = ?, kms_key_id = ? WHERE id = ?',
+      [hcs.txId, signedPayload.signature, signedPayload.payloadHash, signedPayload.kmsKeyId, updateId]
+    );
 
     return {
       id: updateId,
@@ -268,7 +284,10 @@ export class ResourceService {
       quantity,
       timestamp,
       hederaTopicId: hcs.topicId,
-      hederaTxId: hcs.txId
+      hederaTxId: hcs.txId,
+      signature: signedPayload.signature,
+      payloadHash: signedPayload.payloadHash,
+      kmsKeyId: signedPayload.kmsKeyId
     };
   }
 }
