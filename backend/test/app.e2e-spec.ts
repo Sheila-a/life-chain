@@ -276,6 +276,28 @@ describe('LifeChain Phase 2 API', () => {
     expect(bookingResponse.body.payloadHash).toBeTruthy();
     expect(bookingResponse.body.kmsKeyId).toBe('mock-kms-key');
 
+    const allSlotsResponse = await request(app.getHttpServer()).get('/api/equipment/list').expect(200);
+
+    expect(allSlotsResponse.body).toHaveLength(1);
+    expect(allSlotsResponse.body[0]).toMatchObject({
+      id: slotResponse.body.id,
+      hederaTxId: bookingResponse.body.hederaTxId
+    });
+
+    const mySlotsResponse = await request(app.getHttpServer())
+      .get('/api/equipment/me')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(mySlotsResponse.body).toHaveLength(1);
+    expect(mySlotsResponse.body[0]).toMatchObject({
+      id: slotResponse.body.id,
+      hospital_id: slotResponse.body.hospitalId,
+      hederaTxId: bookingResponse.body.hederaTxId
+    });
+
+    await request(app.getHttpServer()).get('/api/equipment/me').expect(401);
+
     const auditResponse = await request(app.getHttpServer())
       .get(`/api/audit/bookings/${bookingResponse.body.id}`)
       .expect(200);
