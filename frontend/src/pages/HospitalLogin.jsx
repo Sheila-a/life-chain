@@ -4,25 +4,41 @@ import { motion } from "framer-motion";
 import { loginUser } from "../services/auth/AuthService";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
+import { LogoF } from "../assets";
+import useAuth from "../hooks/useAuth";
+// import useAuth from "../../hooks/useAuth";
 
-function Button({ children, className = "", variant = "default", ...props }) {
+export function Button({
+  children,
+  className = "",
+  variant = "default",
+  loading,
+  disabled,
+  ...props
+}) {
   const base =
-    "inline-flex items-center justify-center font-semibold transition-all duration-300 focus:outline-none rounded-2xl";
+    "inline-flex items-center justify-center cursor-pointer font-semibold transition-all duration-300 focus:outline-none rounded-2xl";
 
   const variants = {
-    default: "bg-emerald-500 hover:bg-emerald-600 text-white",
+    default: `bg-emerald-500 hover:bg-emerald-600 text-white ${
+      disabled && "opacity-60 border-gray-300 pointer-events-none"
+    }`,
     outline:
       "border border-emerald-300 text-emerald-200 hover:bg-emerald-500 hover:text-white",
   };
 
   return (
-    <button className={`${base} ${variants[variant]} ${className}`} {...props}>
+    <button
+      className={`${base} ${variants[variant]} ${className}`}
+      disabled={loading || disabled}
+      {...props}
+    >
       {children}
     </button>
   );
 }
 
-function Input({ label, ...props }) {
+export function Input({ label, ...props }) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-emerald-300 text-sm">{label}</label>
@@ -34,7 +50,31 @@ function Input({ label, ...props }) {
   );
 }
 
-function Card({ children }) {
+export function Select({ label, options = [], disabled, ...props }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="text-emerald-300 text-sm">{label}</label>
+
+      <select
+        className={`p-4 rounded-2xl bg-white/10 disabled:bg-white/40 disabled:cursor-not-allowed backdrop-blur-xl border border-white/20 focus:border-emerald-400 outline-none text-white appearance-none`}
+        {...props}
+        disabled={disabled}
+      >
+        <option value="" disabled className="text-black">
+          Select an option
+        </option>
+
+        {options.map((opt, i) => (
+          <option key={i} value={opt.value} className="text-black">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+export function Card({ children }) {
   return (
     <div className="bg-white/5 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 p-8">
       {children}
@@ -46,6 +86,7 @@ const HospitalLogin = () => {
   const [email, setEmail] = useState();
   const [password, setPassword] = useState();
   const navigate = useNavigate();
+  const { setAuth } = useAuth();
 
   const handleLogin = async () => {
     const req = { email, password };
@@ -64,10 +105,14 @@ const HospitalLogin = () => {
 
     try {
       const res = await loginUser(req);
-      console.log(res);
 
       if (res) {
         toast.dismiss(loadingId);
+        setAuth({
+          token: res?.token,
+          success: true,
+        });
+        navigate("/dashboard");
       }
     } catch (error) {
       console.log(error);
@@ -87,6 +132,10 @@ const HospitalLogin = () => {
         className="w-full max-w-xl"
       >
         <Card>
+          {" "}
+          <Link to={`/`}>
+            <img src={LogoF} alt="" className="w-44 -ml-4" />
+          </Link>
           <h2 className="text-3xl font-bold mb-6">Hospital Login</h2>
           <div className="space-y-6">
             <Input

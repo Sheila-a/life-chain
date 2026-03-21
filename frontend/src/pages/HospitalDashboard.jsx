@@ -6,8 +6,10 @@ import {
   ShieldCheck,
   Plus,
   Pencil,
+  Menu,
+  X,
 } from "lucide-react";
-import { Button, Card, Input } from "./HospitalLogin";
+import { Button, Card, Input, Select } from "./HospitalLogin";
 import { useNavigate } from "react-router-dom";
 import {
   createEqSlot,
@@ -26,6 +28,7 @@ const HospitalDashboard = () => {
   const { auth } = useAuth();
   const [resources, setResources] = useState([]);
   const [equipmentSlots, setEquipmentSlots] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
     sessionStorage.removeItem("lifaufethch");
@@ -34,13 +37,16 @@ const HospitalDashboard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [res, res2] = await Promise.all([listHospEqSlot(), listResource()]);
+      const [res, res2] = await Promise.all([
+        listHospEqSlot(),
+        listResource(auth?.token),
+      ]);
       if (res) setEquipmentSlots(res);
       if (res2) setResources(res2);
     } catch (err) {
       toast.error(err?.message || "An error occurred!");
     }
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
     const run = async () => {
@@ -124,6 +130,23 @@ const HospitalDashboard = () => {
     }
   };
 
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "auto";
+  }, [sidebarOpen]);
+
+  const opts = [
+    { value: "MRI", label: "MRI" },
+    { value: "ICU bed", label: "ICU bed" },
+    { value: "Anti-Venom (Polyvalent)", label: "Anti-Venom (Polyvalent)" },
+    { value: "Anti-Venom (Monovalent)", label: "Anti-Venom (Monovalent)" },
+  ];
+
+  const opts2 = [
+    { value: "MRI", label: "MRI" },
+    { value: "ICU bed", label: "ICU bed" },
+    { value: "CT Scan", label: "CT Scan" },
+  ];
+
   return (
     <div className="min-h-screen flex bg-linear-to-br from-emerald-950 via-teal-900 to-slate-950 text-white">
       <CustomModal open={openModal} handleClose={() => setOpenModal(false)}>
@@ -140,8 +163,10 @@ const HospitalDashboard = () => {
                 <label className="text-emerald-300 text-sm">
                   Resource Type
                 </label>
-                <Input
+                <Select
                   value={form.resourceType}
+                  options={opts}
+                  disabled={teep == "updateR"}
                   onChange={(e) =>
                     setForm({ ...form, resourceType: e.target.value })
                   }
@@ -165,7 +190,10 @@ const HospitalDashboard = () => {
               {" "}
               <div>
                 <label className="text-emerald-300 text-sm">Slot Type</label>
-                <Input
+
+                <Select
+                  options={opts2}
+                  disabled={teep == "updateE"}
                   value={form2.slotType}
                   onChange={(e) =>
                     setForm2({ ...form2, slotType: e.target.value })
@@ -199,19 +227,47 @@ const HospitalDashboard = () => {
                 : handleCreateEqt
             }
           >
-            {teep == "create" ? "Create" : "Update"}{" "}
+            {teep == "createR" || teep == "createE" ? "Create" : "Update"}{" "}
             {teep == "createR" || teep == "updateR" ? "Resource" : "Slot"}
           </Button>
         </div>
-      </CustomModal>
-      <aside className="w-72 bg-black/40 backdrop-blur-xl p-8 space-y-6 border-r border-white/10">
-        <h2 className="text-2xl font-bold text-emerald-400">Hospital Panel</h2>
+      </CustomModal>{" "}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <div className="md:hidden p-4 absolute top-8 left-2">
+        <button onClick={() => setSidebarOpen(true)}>
+          <Menu size={30} />
+        </button>
+      </div>
+      <aside
+        className={`
+    fixed top-0 left-0 h-screen w-72 bg-black/40 backdrop-blur-xl p-8 space-y-6 border-r border-white/10 z-50
+    transform transition-transform duration-300
+
+    ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+    md:translate-x-0 md:static md:block
+  `}
+      >
+        {/* Close button (mobile only) */}
+        <div className="md:hidden flex justify-end">
+          <button onClick={() => setSidebarOpen(false)}>
+            <X />
+          </button>
+        </div>
+        <h2 className="text-2xl font-bold text-emerald-400 ">Hospital Panel</h2>
 
         <nav className="space-y-2 text-lg">
           <SidebarItem
             label="Dashboard Overview"
             active={activeView === "dashboard"}
-            onClick={() => setActiveView("dashboard")}
+            onClick={() => {
+              setActiveView("dashboard");
+              setSidebarOpen(false); // close on click (mobile UX)
+            }}
           />
 
           <SidebarItem
@@ -240,13 +296,13 @@ const HospitalDashboard = () => {
       <main className="flex-1 p-10 space-y-10">
         {activeView === "dashboard" && (
           <>
-            <h1 className="text-4xl font-bold">
+            <h1 className="text-4xl font-bold md:pl-0 pl-6">
               Hospital Operations Dashboard
             </h1>
 
             <div className="grid md:grid-cols-3 gap-8">
               <DashboardCard
-                title="Available MRI Slots"
+                title="Available Slots"
                 value={equipmentSlots.length}
                 icon={Calendar}
               />
@@ -262,7 +318,7 @@ const HospitalDashboard = () => {
               />
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-10">
+            <div className="mt-5 grid lg:grid-cols-2 gap-10">
               <ResourceRegistry
                 resources={resources}
                 setOpenModal={setOpenModal}
@@ -350,11 +406,12 @@ function ResourceRegistry({ resources, setOpenModal, setTeep, setForm }) {
         <EmptyState message="No resources registered yet." />
       ) : (
         <Table
-          columns={["ID", "Resource Type", "Quantity", "Action"]}
+          columns={["ID", "Resource Type", "Quantity", "Hed. Ver.", "Action"]}
           data={resources.map((r, i) => [
             i + 1,
             r.resource_type,
             r.quantity,
+            <HederaBadge txId={r.hederaTxId} />,
             <Pencil
               size={20}
               className="cursor-pointer"
@@ -400,39 +457,12 @@ const formatSlotDateTime = (isoString) => {
 
   return {
     date: formattedDate.replace(",", ` ${day}${suffix}`),
-    time: time.replace(":00", ""), // removes :00 → 12PM instead of 12:00 PM
+    time: time.replace(":00", ""),
   };
 };
 
-const formatSlotDateTime = (isoString) => {
-  const date = new Date(isoString);
-
-  const day = date.getDate();
-  const suffix =
-    day % 10 === 1 && day !== 11
-      ? "st"
-      : day % 10 === 2 && day !== 12
-      ? "nd"
-      : day % 10 === 3 && day !== 13
-      ? "rd"
-      : "th";
-
-  const formattedDate = date.toLocaleDateString("en-GB", {
-    weekday: "short",
-    month: "short",
-    year: "numeric",
-  });
-
-  const time = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    hour12: true,
-  });
-
-  return {
-    date: formattedDate.replace(",", ` ${day}${suffix}`),
-    time: time.replace(":00", ""), 
-  };
-};
+const capitalize = (text) =>
+  text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
 
 function EquipmentSharing({ equipmentSlots, setOpenModal, setTeep, setForm2 }) {
   return (
@@ -457,13 +487,19 @@ function EquipmentSharing({ equipmentSlots, setOpenModal, setTeep, setForm2 }) {
         <EmptyState message="No equipment slots available." />
       ) : (
         <Table
-          columns={["ID", "Slot Type", "Slot Time", "Status"]}
-          data={equipmentSlots.map((s, i) => [
-            i + 1,
-            s.slot_type,
-            s.slot_time,
-            s.status,
-          ])}
+          columns={["ID", "Slot Type", "Date", " Time", "Status", "Hed. Ver."]}
+          data={equipmentSlots.map((s, i) => {
+            const { date, time } = formatSlotDateTime(s.slot_time);
+
+            return [
+              i + 1,
+              s.slot_type,
+              date,
+              time,
+              capitalize(s.status),
+              <HederaBadge txId={s.hederaTxId} />,
+            ];
+          })}
         />
       )}
     </Card>
@@ -497,6 +533,31 @@ function Table({ columns, data }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function HederaBadge({ txId }) {
+  if (!txId)
+    return (
+      <a
+        href={`#`}
+        className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-400/20 text-red-300 text-xs hover:bg-red-500/20 transition"
+      >
+        <span className="w-2 h-2 rounded-full bg-red-400"></span>
+        Unverified
+      </a>
+    );
+
+  return (
+    <a
+      href={`https://hashscan.io/testnet/transaction/${txId}`}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 text-xs hover:bg-emerald-500/20 transition"
+    >
+      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+      Verified
+    </a>
   );
 }
 

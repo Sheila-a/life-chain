@@ -48,6 +48,7 @@ export default function HomePage() {
           <Button
             className="rounded-2xl px-10 py-7 text-xl bg-emerald-500 hover:bg-emerald-600 shadow-2xl"
             icon={<Search className="mr-2" />}
+            href={"/search"}
           >
             Public Emergency Search
           </Button>
