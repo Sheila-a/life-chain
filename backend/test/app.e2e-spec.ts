@@ -329,6 +329,9 @@ describe('LifeChain Phase 2 API', () => {
       .expect(201);
 
     expect(futureVault.body.hfsFileId).toContain('0.0.');
+    expect(futureVault.body.hfsTxId).toContain('0.0.7002@');
+    expect(futureVault.body.signature).toBeTruthy();
+    expect(futureVault.body.kmsKeyId).toBe('mock-kms-key');
 
     await request(app.getHttpServer())
       .get(`/api/vault/release/${futureVault.body.id}`)
@@ -363,6 +366,9 @@ describe('LifeChain Phase 2 API', () => {
       id: futureVault.body.id,
       type: 'vault',
       hospitalId: hospital.id,
+      signature: futureVault.body.signature,
+      payloadHash: futureVault.body.fileHash,
+      kmsKeyId: 'mock-kms-key',
       auditStatus: 'verified-stored'
     });
     expect(auditResponse.body.hashscanFileUrl).toContain('https://hashscan.io/testnet/file/');

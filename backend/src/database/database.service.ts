@@ -157,7 +157,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         file_hash TEXT NOT NULL,
         release_time TIMESTAMPTZ NOT NULL,
         hfs_file_id TEXT,
+        hfs_tx_id TEXT,
         hcs_tx_id TEXT,
+        kms_signature TEXT,
+        kms_key_id TEXT,
         created_at TIMESTAMPTZ NOT NULL
       );
 
@@ -169,6 +172,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_signature TEXT;
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payload_hash TEXT;
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
+      ALTER TABLE vaults ADD COLUMN IF NOT EXISTS hfs_tx_id TEXT;
+      ALTER TABLE vaults ADD COLUMN IF NOT EXISTS kms_signature TEXT;
+      ALTER TABLE vaults ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
 
       INSERT INTO hospital_resources (hospital_id, resource_type, quantity, updated_at)
       SELECT DISTINCT ON (ru.hospital_id, ru.resource_type)

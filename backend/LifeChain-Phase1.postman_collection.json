@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "dd114ccf-90d3-471c-bf16-5e0d3ec8b0a8",
     "name": "LifeChain Phase 1 API",
-    "description": "Postman collection for LifeChain Phase 1 (NestJS backend). Includes auth, resource registry, equipment booking, and vault endpoints with sample payloads.",
+    "description": "Postman collection for the LifeChain NestJS backend. Includes auth, resource registry, equipment booking, vault proof endpoints, and audit flows with sample payloads.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -98,6 +98,64 @@
             },
             "description": "Authenticates and returns JWT token. Test script stores token in collection variable `token`."
           }
+        },
+        {
+          "name": "Get My Hospital Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hospitals/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hospitals",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Returns the authenticated hospital admin profile, including hospital id and coordinates."
+          }
+        },
+        {
+          "name": "Update My Hospital Location",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 6.5244,\n  \"long\": 3.3792\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hospitals/me/location",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hospitals",
+                "me",
+                "location"
+              ]
+            },
+            "description": "Updates the authenticated hospital coordinates used for nearest-resource search."
+          }
         }
       ]
     },
@@ -190,6 +248,36 @@
               ]
             },
             "description": "Public endpoint. Returns current hospital inventory. Optional query params: `resourceType`, `hospitalId`."
+          }
+        },
+        {
+          "name": "Get My Resources",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/me?resourceType=MRI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "resources",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "resourceType",
+                  "value": "MRI"
+                }
+              ]
+            },
+            "description": "Returns current inventory for the authenticated hospital admin only."
           }
         },
         {
@@ -382,6 +470,36 @@
           }
         },
         {
+          "name": "List My Equipment Slots",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/me?onlyAvailable=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "onlyAvailable",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Returns equipment slots for the authenticated hospital admin, including the latest booking Hedera tx id when available."
+          }
+        },
+        {
           "name": "Create Booking",
           "request": {
             "method": "POST",
@@ -410,7 +528,7 @@
                 "create"
               ]
             },
-            "description": "Books an available slot, logs booking event to Hedera HCS, and stores tx ID."
+            "description": "Books an available slot, logs booking event to Hedera HCS, and stores tx ID plus KMS signature proof."
           }
         }
       ]
@@ -448,7 +566,7 @@
                 "upload"
               ]
             },
-            "description": "Encrypts content (AES-GCM), stores ciphertext only, anchors hash to HFS, logs proof to HCS."
+            "description": "Encrypts content (AES-GCM), hashes the encrypted payload, signs the hash with AWS KMS, anchors the proof to Hedera HFS, and logs the vault proof to HCS. Response includes `hfsFileId`, `hfsTxId`, `hederaTxId`, `signature`, and `kmsKeyId`."
           }
         },
         {

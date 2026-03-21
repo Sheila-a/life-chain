@@ -7,20 +7,22 @@
 import { DatabaseService } from '../database/database.service';
 import { HederaService } from '../hedera/hedera.service';
 import { EncryptionService } from '../encryption/encryption.service';
+import { KmsService } from '../kms/kms.service';
 
 @Injectable()
 export class VaultService {
   constructor(
     private readonly db: DatabaseService,
     private readonly hederaService: HederaService,
-    private readonly encryptionService: EncryptionService
+    private readonly encryptionService: EncryptionService,
+    private readonly kmsService: KmsService
   ) {}
 
   async uploadVault(
     body: { hospitalId?: number; content?: string; releaseTime?: string },
     user?: { hospitalId: number }
   ) {
-    const hospitalId = Number(body.hospitalId ?? user?.hospitalId);
+    const hospitalId = Number(user?.hospitalId ?? body.hospitalId);
     const content = body.content;
     const releaseTime = body.releaseTime;
 
@@ -40,19 +42,25 @@ export class VaultService {
     const fileHash = this.encryptionService.sha256(
       `${encrypted.encryptedContent}.${encrypted.iv}.${encrypted.authTag}`
     );
+    const signedHash = await this.kmsService.signHash(fileHash);
 
     const hfs = await this.hederaService.uploadHashToFileService(fileHash, {
       eventType: 'VAULT_HASH_ANCHOR',
       hospitalId,
-      releaseTime: releaseDate.toISOString()
+      releaseTime: releaseDate.toISOString(),
+      signature: signedHash.signature,
+      kmsKeyId: signedHash.kmsKeyId
     });
 
     const hcs = await this.hederaService.submitConsensusMessage({
       eventType: 'VAULT_UPLOAD',
       hospitalId,
       fileHash,
+      signature: signedHash.signature,
+      kmsKeyId: signedHash.kmsKeyId,
       releaseTime: releaseDate.toISOString(),
       hfsFileId: hfs.fileId,
+      hfsTxId: hfs.txId,
       timestamp: new Date().toISOString()
     });
 
@@ -68,9 +76,12 @@ export class VaultService {
         file_hash,
         release_time,
         hfs_file_id,
+        hfs_tx_id,
         hcs_tx_id,
+        kms_signature,
+        kms_key_id,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         hospitalId,
@@ -81,7 +92,10 @@ export class VaultService {
         fileHash,
         releaseDate.toISOString(),
         hfs.fileId,
+        hfs.txId,
         hcs.txId,
+        signedHash.signature,
+        signedHash.kmsKeyId,
         createdAt
       ]
     );
@@ -92,8 +106,11 @@ export class VaultService {
       fileHash,
       releaseTime: releaseDate.toISOString(),
       hfsFileId: hfs.fileId,
+      hfsTxId: hfs.txId,
       hederaTopicId: hcs.topicId,
       hederaTxId: hcs.txId,
+      signature: signedHash.signature,
+      kmsKeyId: signedHash.kmsKeyId,
       createdAt
     };
   }

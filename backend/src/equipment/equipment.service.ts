@@ -42,20 +42,11 @@ export class EquipmentService {
       SELECT
         es.id,
         es.hospital_id,
-        h.name AS hospital_name,
         es.slot_type,
         es.slot_time,
         es.status,
-        es.created_at,
-        (
-          SELECT b.hedera_tx_id
-          FROM bookings b
-          WHERE b.slot_id = es.id
-          ORDER BY b.booked_at DESC, b.id DESC
-          LIMIT 1
-        ) AS "hederaTxId"
+        es.created_at
       FROM equipment_slots es
-      INNER JOIN hospitals h ON h.id = es.hospital_id
       WHERE 1=1
     `;
     const params: unknown[] = [];
@@ -70,7 +61,47 @@ export class EquipmentService {
     }
 
     sql += ' ORDER BY es.slot_time ASC';
-    return this.db.query(sql, params);
+    const slots = await this.db.query<{
+      id: number | string;
+      hospital_id: number | string;
+      slot_type: string;
+      slot_time: string;
+      status: string;
+      created_at: string;
+    }>(sql, params);
+
+    if (slots.length === 0) {
+      return slots;
+    }
+
+    const hospitalRows = await this.db.query<{
+      id: number | string;
+      name: string;
+    }>('SELECT id, name FROM hospitals');
+
+    const bookingRows = await this.db.query<{
+      slot_id: number | string;
+      hedera_tx_id: string | null;
+    }>(
+      `
+        SELECT DISTINCT ON (b.slot_id)
+          b.slot_id,
+          b.hedera_tx_id
+        FROM bookings b
+        ORDER BY b.slot_id, b.booked_at DESC, b.id DESC
+      `
+    );
+
+    const hospitalNameById = new Map(hospitalRows.map((row) => [Number(row.id), row.name]));
+    const hederaBySlotId = new Map(
+      bookingRows.map((row) => [Number(row.slot_id), row.hedera_tx_id ?? null])
+    );
+
+    return slots.map((slot) => ({
+      ...slot,
+      hospital_name: hospitalNameById.get(Number(slot.hospital_id)) ?? null,
+      hederaTxId: hederaBySlotId.get(Number(slot.id)) ?? null
+    }));
   }
 
   async getMySlots(user?: { hospitalId: number }, onlyAvailable?: string) {

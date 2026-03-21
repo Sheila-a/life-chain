@@ -65,4 +65,37 @@ export class KmsService {
       mode: 'live'
     };
   }
+
+  async signHash(hash: string): Promise<SignedPayloadResult> {
+    if (!hash || !/^[a-fA-F0-9]{64}$/.test(hash)) {
+      throw new Error('hash must be a valid SHA-256 hex digest');
+    }
+
+    if (!this.enabled || !this.client) {
+      const signature = crypto.createHash('sha256').update(`mock-kms-hash:${hash}`).digest('base64');
+      return {
+        signature,
+        payloadHash: hash.toLowerCase(),
+        kmsKeyId: this.kmsKeyId,
+        mode: 'mock'
+      };
+    }
+
+    const digest = Buffer.from(hash, 'hex');
+    const response = await this.client.send(
+      new SignCommand({
+        KeyId: this.kmsKeyId,
+        Message: digest,
+        MessageType: 'DIGEST',
+        SigningAlgorithm: this.signingAlgorithm
+      })
+    );
+
+    return {
+      signature: Buffer.from(response.Signature ?? []).toString('base64'),
+      payloadHash: hash.toLowerCase(),
+      kmsKeyId: this.kmsKeyId,
+      mode: 'live'
+    };
+  }
 }
