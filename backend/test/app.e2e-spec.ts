@@ -222,7 +222,14 @@ describe('LifeChain Phase 2 API', () => {
   });
 
   it('returns the authenticated hospital admin profile details', async () => {
-    const hospital = await registerHospital(app, 'Profile Hospital', 'profile@example.org', 6.5244, 3.3792);
+    const hospital = await registerHospital(
+      app,
+      'Profile Hospital',
+      'profile@example.org',
+      6.5244,
+      3.3792,
+      '+2348012345678'
+    );
     const token = await loginHospital(app, 'profile@example.org');
 
     const profileResponse = await request(app.getHttpServer())
@@ -234,6 +241,7 @@ describe('LifeChain Phase 2 API', () => {
       id: hospital.id,
       name: 'Profile Hospital',
       email: 'profile@example.org',
+      phone: '+2348012345678',
       lat: 6.5244,
       long: 3.3792
     });
@@ -243,7 +251,7 @@ describe('LifeChain Phase 2 API', () => {
 
   it('creates equipment, books it, and exposes booking audit data', async () => {
     await registerHospital(app, 'Owner Hospital', 'owner@example.org', 6.5, 3.3);
-    await registerHospital(app, 'Booking Hospital', 'booker@example.org', 6.7, 3.4);
+    await registerHospital(app, 'Booking Hospital', 'booker@example.org', 6.7, 3.4, '+2348098765432');
     const ownerToken = await loginHospital(app, 'owner@example.org');
     const bookerToken = await loginHospital(app, 'booker@example.org');
 
@@ -271,6 +279,9 @@ describe('LifeChain Phase 2 API', () => {
       .expect(201);
 
     expect(bookingResponse.body.hospitalId).not.toBe(999999);
+    expect(bookingResponse.body.name).toBe('Booking Hospital');
+    expect(bookingResponse.body.email).toBe('booker@example.org');
+    expect(bookingResponse.body.phone).toBe('+2348098765432');
     expect(bookingResponse.body.hederaTxId).toContain('0.0.7002@');
     expect(bookingResponse.body.signature).toBeTruthy();
     expect(bookingResponse.body.payloadHash).toBeTruthy();
@@ -383,13 +394,15 @@ async function registerHospital(
   name: string,
   email: string,
   lat: number,
-  long: number
+  long: number,
+  phone?: string
 ) {
   const response = await request(app.getHttpServer())
     .post('/api/register-hospital')
     .send({
       name,
       email,
+      phone,
       password: 'StrongPass123!',
       lat,
       long

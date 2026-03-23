@@ -7,8 +7,15 @@ import { DatabaseService } from '../database/database.service';
 export class AuthService {
   constructor(private readonly db: DatabaseService) {}
 
-  async registerHospital(payload: { name?: string; email?: string; password?: string; lat?: number; long?: number }) {
-    const { name, email, password, lat, long } = payload;
+  async registerHospital(payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    password?: string;
+    lat?: number;
+    long?: number;
+  }) {
+    const { name, email, phone, password, lat, long } = payload;
     if (!name || !email || !password || lat === undefined || long === undefined) {
       throw new BadRequestException('name, email, password, lat, and long are required');
     }
@@ -27,14 +34,15 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
     const result = await this.db.run(
-      'INSERT INTO hospitals (name, email, password_hash, lat, long, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, email, passwordHash, latitude, longitude, createdAt]
+      'INSERT INTO hospitals (name, email, phone, password_hash, lat, long, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, email, phone?.trim() || null, passwordHash, latitude, longitude, createdAt]
     );
 
     return {
       id: Number(result.lastInsertRowid),
       name,
       email,
+      phone: phone?.trim() || null,
       lat: latitude,
       long: longitude,
       createdAt
@@ -121,10 +129,11 @@ export class AuthService {
         id: number;
         name: string;
         email: string;
+        phone: string | null;
         lat: number;
         long: number;
         created_at: string;
-      }>('SELECT id, name, email, lat, long, created_at FROM hospitals WHERE id = ? LIMIT 1', [
+      }>('SELECT id, name, email, phone, lat, long, created_at FROM hospitals WHERE id = ? LIMIT 1', [
         hospitalId
       ])
     )[0];
@@ -134,6 +143,7 @@ export class AuthService {
     id: number;
     name: string;
     email: string;
+    phone: string | null;
     lat: number;
     long: number;
     created_at: string;
@@ -142,6 +152,7 @@ export class AuthService {
       id: Number(hospital.id),
       name: hospital.name,
       email: hospital.email,
+      phone: hospital.phone,
       lat: Number(hospital.lat),
       long: Number(hospital.long),
       createdAt: hospital.created_at

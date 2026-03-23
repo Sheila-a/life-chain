@@ -137,12 +137,23 @@ export class EquipmentService {
     );
 
     const bookingId = Number(bookingInsert.lastInsertRowid);
+    const hospital = (
+      await this.db.query<{
+        name: string;
+        email: string;
+        phone: string | null;
+      }>('SELECT name, email, phone FROM hospitals WHERE id = ? LIMIT 1', [hospitalId])
+    )[0];
+
     const signedPayload = await this.kmsService.signPayload({
       eventType: 'EQUIPMENT_BOOKING',
       bookingId,
       hospitalId,
       slotId,
-      bookedAt
+      bookedAt,
+      hospitalName: hospital?.name ?? null,
+      hospitalEmail: hospital?.email ?? null,
+      hospitalPhone: hospital?.phone ?? null
     });
 
     const hcs = await this.hederaService.submitConsensusMessage({
@@ -151,6 +162,9 @@ export class EquipmentService {
       hospitalId,
       slotId,
       bookedAt,
+      hospitalName: hospital?.name ?? null,
+      hospitalEmail: hospital?.email ?? null,
+      hospitalPhone: hospital?.phone ?? null,
       signature: signedPayload.signature,
       payloadHash: signedPayload.payloadHash,
       kmsKeyId: signedPayload.kmsKeyId
@@ -165,6 +179,9 @@ export class EquipmentService {
       id: bookingId,
       slotId,
       hospitalId,
+      name: hospital?.name ?? null,
+      email: hospital?.email ?? null,
+      phone: hospital?.phone ?? null,
       bookedAt,
       hederaTopicId: hcs.topicId,
       hederaTxId: hcs.txId,

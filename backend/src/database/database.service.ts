@@ -94,6 +94,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         id BIGSERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
+        phone TEXT,
         password_hash TEXT NOT NULL,
         lat DOUBLE PRECISION NOT NULL,
         long DOUBLE PRECISION NOT NULL,
@@ -166,6 +167,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
       ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS long DOUBLE PRECISION;
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS phone TEXT;
       ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS kms_signature TEXT;
       ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS payload_hash TEXT;
       ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS kms_key_id TEXT;

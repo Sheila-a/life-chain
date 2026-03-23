@@ -16,6 +16,7 @@ export class AuthController {
       properties: {
         name: { type: 'string', example: 'City General Hospital' },
         email: { type: 'string', example: 'admin@citygeneral.org' },
+        phone: { type: 'string', example: '+2348012345678', nullable: true },
         password: { type: 'string', example: 'StrongPass123!' },
         lat: { type: 'number', example: 6.5244 },
         long: { type: 'number', example: 3.3792 }
@@ -24,7 +25,10 @@ export class AuthController {
     description: 'Creates a hospital admin account.'
   })
   @ApiResponse({ status: 201, description: 'Hospital registered successfully.' })
-  register(@Body() body: { name?: string; email?: string; password?: string; lat?: number; long?: number }) {
+  register(
+    @Body()
+    body: { name?: string; email?: string; phone?: string; password?: string; lat?: number; long?: number }
+  ) {
     return this.authService.registerHospital(body);
   }
 
