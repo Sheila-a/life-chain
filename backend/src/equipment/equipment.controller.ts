@@ -78,7 +78,27 @@ export class EquipmentController {
     },
     description: 'Books an available slot, logs booking event to Hedera HCS, and stores tx ID.'
   })
-  @ApiResponse({ status: 201, description: 'Booking created successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Booking created successfully.',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', example: 1 },
+        slotId: { type: 'number', example: 1 },
+        hospitalId: { type: 'number', example: 2 },
+        name: { type: 'string', example: 'Booking Hospital' },
+        email: { type: 'string', example: 'booker@example.org' },
+        phone: { type: 'string', example: '+2348012345678', nullable: true },
+        bookedAt: { type: 'string', format: 'date-time', example: '2026-03-22T10:00:00.000Z' },
+        hederaTopicId: { type: 'string', example: '0.0.8188073' },
+        hederaTxId: { type: 'string', example: '0.0.8046730@1774115684.933487364' },
+        signature: { type: 'string', example: 'MEYCIQClZ9ga44NXxKthOAF79jbeg4NpMnZ/QfpIP28u9RUSegIhANWaugrf0E+lITefq1MD8gVU0GxVwvavvMx/JOUnzrJK' },
+        payloadHash: { type: 'string', example: '2134aa81186c01998f339b6428eb8239691760ce97c84e34decbdd1b33cdce02' },
+        kmsKeyId: { type: 'string', example: 'arn:aws:kms:eu-north-1:123456789012:key/5ccd60b6-e7fd-4c23-8c8d-e4922b9df8b8' }
+      }
+    }
+  })
   createBooking(
     @Body() body: { hospitalId?: number; slotId?: number },
     @Req() req: { user?: { hospitalId: number } }
