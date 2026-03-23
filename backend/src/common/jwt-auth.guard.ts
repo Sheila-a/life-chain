@@ -1,5 +1,5 @@
-﻿import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import jwt from 'jsonwebtoken';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -10,7 +10,17 @@ export class JwtAuthGuard implements CanActivate {
       user?: { hospitalId: number; email: string };
     }>();
 
-    if (request.path === '/api/login' || request.path === '/api/register-hospital' || request.path === '/api/resources/search' || request.path === '/api/equipment/list') {
+    if (
+      request.path.startsWith('/api/docs') ||
+      request.path === '/api/docs-json' ||
+      request.path === '/api/login' ||
+      request.path === '/api/register-hospital' ||
+      request.path === '/api/resources/search' ||
+      request.path === '/api/resources/nearest' ||
+      request.path === '/api/resource-updates/search' ||
+      request.path.startsWith('/api/audit/') ||
+      request.path === '/api/equipment/list'
+    ) {
       return true;
     }
 

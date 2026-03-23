@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Pool, QueryResultRow } from 'pg';
 
 export type RunResult = {
   changes: number;
@@ -21,7 +21,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
+  async query<T extends QueryResultRow = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
     this.ensureInitialized();
     const result = await this.pool.query<T>(this.toPostgresSql(sql), params);
     return result.rows;
@@ -36,11 +36,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const executableSql = isInsert && !hasReturning ? `${baseSql} RETURNING *` : baseSql;
 
     const result = await this.pool.query<Record<string, unknown>>(executableSql, params);
-    const insertedId = result.rows[0]?.id;
+    const insertedId = this.parseInsertedId(result.rows[0]?.id);
 
     return {
       changes: result.rowCount ?? 0,
-      lastInsertRowid: typeof insertedId === 'number' ? insertedId : null
+      lastInsertRowid: insertedId
     };
   }
 
@@ -68,6 +68,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  private parseInsertedId(value: unknown): number | null {
+    if (typeof value === 'number') {
+      return Number.isSafeInteger(value) ? value : null;
+    }
+
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) ? parsed : null;
+    }
+
+    return null;
+  }
+
   private async initSchema(): Promise<void> {
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS metadata (
@@ -81,7 +94,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         id BIGSERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
+        phone TEXT,
         password_hash TEXT NOT NULL,
+        lat DOUBLE PRECISION NOT NULL,
+        long DOUBLE PRECISION NOT NULL,
         created_at TIMESTAMPTZ NOT NULL
       );
 
@@ -91,8 +107,26 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         resource_type TEXT NOT NULL,
         quantity INTEGER NOT NULL,
         timestamp TIMESTAMPTZ NOT NULL,
-        hedera_tx_id TEXT
+        hedera_tx_id TEXT,
+        kms_signature TEXT,
+        payload_hash TEXT,
+        kms_key_id TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS hospital_resources (
+        id BIGSERIAL PRIMARY KEY,
+        hospital_id BIGINT NOT NULL REFERENCES hospitals(id),
+        resource_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        UNIQUE (hospital_id, resource_type)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_hospital_resources_resource_type_hospital_id
+      ON hospital_resources (resource_type, hospital_id);
+
+      CREATE INDEX IF NOT EXISTS idx_hospitals_lat_long
+      ON hospitals (lat, long);
 
       CREATE TABLE IF NOT EXISTS equipment_slots (
         id BIGSERIAL PRIMARY KEY,
@@ -108,7 +142,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         slot_id BIGINT NOT NULL REFERENCES equipment_slots(id),
         hospital_id BIGINT NOT NULL REFERENCES hospitals(id),
         booked_at TIMESTAMPTZ NOT NULL,
-        hedera_tx_id TEXT
+        hedera_tx_id TEXT,
+        kms_signature TEXT,
+        payload_hash TEXT,
+        kms_key_id TEXT
       );
 
       CREATE TABLE IF NOT EXISTS vaults (
@@ -121,9 +158,38 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         file_hash TEXT NOT NULL,
         release_time TIMESTAMPTZ NOT NULL,
         hfs_file_id TEXT,
+        hfs_tx_id TEXT,
         hcs_tx_id TEXT,
+        kms_signature TEXT,
+        kms_key_id TEXT,
         created_at TIMESTAMPTZ NOT NULL
       );
+
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS long DOUBLE PRECISION;
+      ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS phone TEXT;
+      ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS kms_signature TEXT;
+      ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS payload_hash TEXT;
+      ALTER TABLE resource_updates ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_signature TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payload_hash TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
+      ALTER TABLE vaults ADD COLUMN IF NOT EXISTS hfs_tx_id TEXT;
+      ALTER TABLE vaults ADD COLUMN IF NOT EXISTS kms_signature TEXT;
+      ALTER TABLE vaults ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
+
+      INSERT INTO hospital_resources (hospital_id, resource_type, quantity, updated_at)
+      SELECT DISTINCT ON (ru.hospital_id, ru.resource_type)
+        ru.hospital_id,
+        ru.resource_type,
+        ru.quantity,
+        ru.timestamp
+      FROM resource_updates ru
+      ORDER BY ru.hospital_id, ru.resource_type, ru.timestamp DESC, ru.id DESC
+      ON CONFLICT (hospital_id, resource_type)
+      DO UPDATE SET
+        quantity = EXCLUDED.quantity,
+        updated_at = EXCLUDED.updated_at;
     `);
   }
 }

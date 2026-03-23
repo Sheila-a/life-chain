@@ -1,16 +1,18 @@
-﻿import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { HederaService } from '../hedera/hedera.service';
+import { KmsService } from '../kms/kms.service';
 
 @Injectable()
 export class EquipmentService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly hederaService: HederaService
+    private readonly hederaService: HederaService,
+    private readonly kmsService: KmsService
   ) {}
 
   async createSlot(body: { hospitalId?: number; slotType?: string; slotTime?: string }, user?: { hospitalId: number }) {
-    const hospitalId = Number(body.hospitalId ?? user?.hospitalId);
+    const hospitalId = Number(user?.hospitalId ?? body.hospitalId);
     const slotType = body.slotType ?? 'MRI';
     const slotTime = body.slotTime;
 
@@ -37,9 +39,14 @@ export class EquipmentService {
 
   async listSlots(hospitalId?: string, onlyAvailable?: string) {
     let sql = `
-      SELECT es.id, es.hospital_id, h.name AS hospital_name, es.slot_type, es.slot_time, es.status, es.created_at
+      SELECT
+        es.id,
+        es.hospital_id,
+        es.slot_type,
+        es.slot_time,
+        es.status,
+        es.created_at
       FROM equipment_slots es
-      INNER JOIN hospitals h ON h.id = es.hospital_id
       WHERE 1=1
     `;
     const params: unknown[] = [];
@@ -54,11 +61,60 @@ export class EquipmentService {
     }
 
     sql += ' ORDER BY es.slot_time ASC';
-    return this.db.query(sql, params);
+    const slots = await this.db.query<{
+      id: number | string;
+      hospital_id: number | string;
+      slot_type: string;
+      slot_time: string;
+      status: string;
+      created_at: string;
+    }>(sql, params);
+
+    if (slots.length === 0) {
+      return slots;
+    }
+
+    const hospitalRows = await this.db.query<{
+      id: number | string;
+      name: string;
+    }>('SELECT id, name FROM hospitals');
+
+    const bookingRows = await this.db.query<{
+      slot_id: number | string;
+      hedera_tx_id: string | null;
+    }>(
+      `
+        SELECT DISTINCT ON (b.slot_id)
+          b.slot_id,
+          b.hedera_tx_id
+        FROM bookings b
+        ORDER BY b.slot_id, b.booked_at DESC, b.id DESC
+      `
+    );
+
+    const hospitalNameById = new Map(hospitalRows.map((row) => [Number(row.id), row.name]));
+    const hederaBySlotId = new Map(
+      bookingRows.map((row) => [Number(row.slot_id), row.hedera_tx_id ?? null])
+    );
+
+    return slots.map((slot) => ({
+      ...slot,
+      hospital_name: hospitalNameById.get(Number(slot.hospital_id)) ?? null,
+      hederaTxId: hederaBySlotId.get(Number(slot.id)) ?? null
+    }));
+  }
+
+  async getMySlots(user?: { hospitalId: number }, onlyAvailable?: string) {
+    const hospitalId = Number(user?.hospitalId);
+    if (!hospitalId) {
+      throw new BadRequestException('Authenticated hospital context is required');
+    }
+
+    return this.listSlots(String(hospitalId), onlyAvailable);
   }
 
   async createBooking(body: { hospitalId?: number; slotId?: number }, user?: { hospitalId: number }) {
-    const hospitalId = Number(body.hospitalId ?? user?.hospitalId);
+    const hospitalId = Number(user?.hospitalId ?? body.hospitalId);
     const slotId = Number(body.slotId);
 
     if (!hospitalId || !slotId) {
@@ -81,24 +137,57 @@ export class EquipmentService {
     );
 
     const bookingId = Number(bookingInsert.lastInsertRowid);
+    const hospital = (
+      await this.db.query<{
+        name: string;
+        email: string;
+        phone: string | null;
+      }>('SELECT name, email, phone FROM hospitals WHERE id = ? LIMIT 1', [hospitalId])
+    )[0];
+
+    const signedPayload = await this.kmsService.signPayload({
+      eventType: 'EQUIPMENT_BOOKING',
+      bookingId,
+      hospitalId,
+      slotId,
+      bookedAt,
+      hospitalName: hospital?.name ?? null,
+      hospitalEmail: hospital?.email ?? null,
+      hospitalPhone: hospital?.phone ?? null
+    });
 
     const hcs = await this.hederaService.submitConsensusMessage({
       eventType: 'EQUIPMENT_BOOKING',
       bookingId,
       hospitalId,
       slotId,
-      bookedAt
+      bookedAt,
+      hospitalName: hospital?.name ?? null,
+      hospitalEmail: hospital?.email ?? null,
+      hospitalPhone: hospital?.phone ?? null,
+      signature: signedPayload.signature,
+      payloadHash: signedPayload.payloadHash,
+      kmsKeyId: signedPayload.kmsKeyId
     });
 
-    await this.db.run('UPDATE bookings SET hedera_tx_id = ? WHERE id = ?', [hcs.txId, bookingId]);
+    await this.db.run(
+      'UPDATE bookings SET hedera_tx_id = ?, kms_signature = ?, payload_hash = ?, kms_key_id = ? WHERE id = ?',
+      [hcs.txId, signedPayload.signature, signedPayload.payloadHash, signedPayload.kmsKeyId, bookingId]
+    );
 
     return {
       id: bookingId,
       slotId,
       hospitalId,
+      name: hospital?.name ?? null,
+      email: hospital?.email ?? null,
+      phone: hospital?.phone ?? null,
       bookedAt,
       hederaTopicId: hcs.topicId,
-      hederaTxId: hcs.txId
+      hederaTxId: hcs.txId,
+      signature: signedPayload.signature,
+      payloadHash: signedPayload.payloadHash,
+      kmsKeyId: signedPayload.kmsKeyId
     };
   }
 }

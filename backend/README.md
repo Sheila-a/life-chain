@@ -17,6 +17,11 @@
 - `HEDERA_OPERATOR_ID`: optional for live Hedera mode
 - `HEDERA_OPERATOR_KEY`: optional for live Hedera mode
 - `HEDERA_HCS_TOPIC_ID`: optional fixed HCS topic id
+- `AWS_REGION`: optional for live AWS KMS signing
+- `AWS_ACCESS_KEY_ID`: optional for live AWS KMS signing
+- `AWS_SECRET_ACCESS_KEY`: optional for live AWS KMS signing
+- `AWS_KMS_KEY_ID`: optional asymmetric KMS signing key id
+- `AWS_KMS_SIGNING_ALGORITHM`: optional, defaults to `ECDSA_SHA_256`
 - `VAULT_MASTER_KEY`: 32+ character secret for vault key wrapping
 
 ## Render deployment
@@ -41,17 +46,43 @@ This repo includes a root `render.yaml` Blueprint that creates:
 
 - Uses PostgreSQL and auto-creates tables at startup.
 - Hedera runs in mock mode when `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` are missing.
+- AWS KMS signing for resource updates, bookings, and vault hash proofs runs in mock mode when AWS KMS credentials are missing.
 - In live mode, startup creates or reuses an HCS topic for immutable logging.
 - API base prefix is `/api`.
+- Swagger UI is available at `/api/docs`.
 
 ## API Endpoints
 
 - `POST /api/register-hospital`
+  - required body fields: `name`, `email`, `password`, `lat`, `long`
 - `POST /api/login`
-- `POST /api/resource/update`
+- `GET /api/hospitals/me/profile`
+  - returns the authenticated hospital admin profile, including hospital id and coordinates
+- `PATCH /api/hospitals/me/location`
+  - updates the authenticated hospital coordinates used for nearest-resource search
+- `POST /api/resource-updates`
+  - creates a resource registry event and updates current inventory
+- `PATCH /api/resources/:resourceType`
+  - updates the current quantity for an existing hospital resource
 - `GET /api/resources/search`
+  - returns current hospital inventory
+- `GET /api/resources/me`
+  - returns current inventory for the authenticated hospital only
+- `GET /api/resources/nearest`
+  - returns nearby hospitals with positive stock for the requested resource
+- `GET /api/resource-updates/search`
+  - returns resource update history
 - `POST /api/equipment/create`
 - `GET /api/equipment/list`
+- `GET /api/equipment/me`
+  - returns equipment slots for the authenticated hospital admin
 - `POST /api/booking/create`
 - `POST /api/vault/upload`
+  - encrypts vault content, hashes it, signs the hash with AWS KMS, anchors proof to Hedera HFS/HCS, and stores the proof metadata
 - `GET /api/vault/release/:id`
+- `GET /api/audit/resources/:id`
+  - returns explorer-ready resource audit data
+- `GET /api/audit/bookings/:id`
+  - returns explorer-ready booking audit data
+- `GET /api/audit/vaults/:id`
+  - returns explorer-ready vault audit data

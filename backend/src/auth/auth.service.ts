@@ -7,10 +7,23 @@ import { DatabaseService } from '../database/database.service';
 export class AuthService {
   constructor(private readonly db: DatabaseService) {}
 
-  async registerHospital(payload: { name?: string; email?: string; password?: string }) {
-    const { name, email, password } = payload;
-    if (!name || !email || !password) {
-      throw new BadRequestException('name, email, and password are required');
+  async registerHospital(payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    password?: string;
+    lat?: number;
+    long?: number;
+  }) {
+    const { name, email, phone, password, lat, long } = payload;
+    if (!name || !email || !password || lat === undefined || long === undefined) {
+      throw new BadRequestException('name, email, password, lat, and long are required');
+    }
+
+    const latitude = Number(lat);
+    const longitude = Number(long);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      throw new BadRequestException('lat and long must be valid numbers');
     }
 
     const existing = (await this.db.query('SELECT id FROM hospitals WHERE email = ? LIMIT 1', [email]))[0];
@@ -21,14 +34,17 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
     const result = await this.db.run(
-      'INSERT INTO hospitals (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
-      [name, email, passwordHash, createdAt]
+      'INSERT INTO hospitals (name, email, phone, password_hash, lat, long, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, email, phone?.trim() || null, passwordHash, latitude, longitude, createdAt]
     );
 
     return {
       id: Number(result.lastInsertRowid),
       name,
       email,
+      phone: phone?.trim() || null,
+      lat: latitude,
+      long: longitude,
       createdAt
     };
   }
@@ -61,5 +77,85 @@ export class AuthService {
     );
 
     return { token };
+  }
+
+  async getMyProfile(user?: { hospitalId: number }) {
+    const hospitalId = Number(user?.hospitalId);
+    if (!hospitalId) {
+      throw new UnauthorizedException('Authenticated hospital context is required');
+    }
+
+    const hospital = await this.getHospitalById(hospitalId);
+    if (!hospital) {
+      throw new UnauthorizedException('Hospital account not found');
+    }
+
+    return this.toHospitalProfile(hospital);
+  }
+
+  async updateMyLocation(
+    payload: { lat?: number; long?: number },
+    user?: { hospitalId: number }
+  ) {
+    const hospitalId = Number(user?.hospitalId);
+    if (!hospitalId) {
+      throw new UnauthorizedException('Authenticated hospital context is required');
+    }
+
+    const latitude = Number(payload.lat);
+    const longitude = Number(payload.long);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      throw new BadRequestException('lat and long must be valid numbers');
+    }
+
+    await this.db.run('UPDATE hospitals SET lat = ?, long = ? WHERE id = ?', [
+      latitude,
+      longitude,
+      hospitalId
+    ]);
+
+    const hospital = await this.getHospitalById(hospitalId);
+
+    if (!hospital) {
+      throw new UnauthorizedException('Hospital account not found');
+    }
+
+    return this.toHospitalProfile(hospital);
+  }
+
+  private async getHospitalById(hospitalId: number) {
+    return (
+      await this.db.query<{
+        id: number;
+        name: string;
+        email: string;
+        phone: string | null;
+        lat: number;
+        long: number;
+        created_at: string;
+      }>('SELECT id, name, email, phone, lat, long, created_at FROM hospitals WHERE id = ? LIMIT 1', [
+        hospitalId
+      ])
+    )[0];
+  }
+
+  private toHospitalProfile(hospital: {
+    id: number;
+    name: string;
+    email: string;
+    phone: string | null;
+    lat: number;
+    long: number;
+    created_at: string;
+  }) {
+    return {
+      id: Number(hospital.id),
+      name: hospital.name,
+      email: hospital.email,
+      phone: hospital.phone,
+      lat: Number(hospital.lat),
+      long: Number(hospital.long),
+      createdAt: hospital.created_at
+    };
   }
 }
