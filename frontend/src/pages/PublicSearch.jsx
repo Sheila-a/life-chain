@@ -342,7 +342,6 @@ export default function PublicSearch() {
                     key={r.id}
                     className="cursor-pointer hover:bg-white/10"
                     onClick={() => {
-                      setSelected(r);
                       // chkAva(r.id);
                     }}
                   >
@@ -355,7 +354,14 @@ export default function PublicSearch() {
                           <MapPin size={14} /> {r.distance}
                         </div>
                       </div>
-                      <Button onClick={() => chkAva(r.id)}>Book</Button>
+                      <Button
+                        onClick={() => {
+                          chkAva(r.id);
+                          setSelected(r);
+                        }}
+                      >
+                        Book
+                      </Button>
                     </div>
                   </Card>
                 ))
