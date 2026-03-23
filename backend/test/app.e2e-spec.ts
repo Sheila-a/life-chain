@@ -163,6 +163,9 @@ describe('LifeChain Phase 2 API', () => {
       expect.arrayContaining([city.id, near.id, far.id])
     );
     expect(nearestResponse.body.every((row: { quantity: number }) => row.quantity > 0)).toBe(true);
+    expect(
+      nearestResponse.body.every((row: { hederaTxId: string }) => row.hederaTxId.includes('0.0.7002@'))
+    ).toBe(true);
 
     const limitedResponse = await request(app.getHttpServer())
       .get('/api/resources/nearest')
