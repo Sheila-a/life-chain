@@ -176,7 +176,16 @@ export class ResourceService {
       LIMIT CAST(? AS INTEGER)
     `;
 
-    return this.db.query(sql, [
+    const rows = await this.db.query<{
+      hospitalId: number | string;
+      hospitalName: string;
+      resourceType: string;
+      quantity: number;
+      lat: number;
+      long: number;
+      distanceKm: number;
+      updatedAt: string;
+    }>(sql, [
       latitude,
       longitude,
       latitude,
@@ -190,6 +199,37 @@ export class ResourceService {
       latitude,
       safeLimit
     ]);
+
+    if (rows.length === 0) {
+      return rows;
+    }
+
+    const latestUpdates = await this.db.query<{
+      hospital_id: number | string;
+      resource_type: string;
+      hedera_tx_id: string | null;
+    }>(
+      `
+        SELECT DISTINCT ON (ru.hospital_id, ru.resource_type)
+          ru.hospital_id,
+          ru.resource_type,
+          ru.hedera_tx_id
+        FROM resource_updates ru
+        WHERE ru.resource_type = ?
+        ORDER BY ru.hospital_id, ru.resource_type, ru.timestamp DESC, ru.id DESC
+      `,
+      [normalizedType]
+    );
+
+    const hederaByHospitalAndType = new Map(
+      latestUpdates.map((row) => [`${Number(row.hospital_id)}:${row.resource_type}`, row.hedera_tx_id ?? null])
+    );
+
+    return rows.map((row) => ({
+      ...row,
+      hederaTxId:
+        hederaByHospitalAndType.get(`${Number(row.hospitalId)}:${row.resourceType}`) ?? null
+    }));
   }
 
   async searchResourceUpdates(resourceType?: string, hospitalId?: string) {
