@@ -536,7 +536,7 @@ function Table({ columns, data }) {
   );
 }
 
-function HederaBadge({ txId }) {
+export function HederaBadge({ txId }) {
   if (!txId)
     return (
       <a

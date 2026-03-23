@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
-import { Search, MapPin, Activity, User, Pin } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Activity,
+  User,
+  Pin,
+  CheckCircle,
+  Clock,
+  Shield,
+  Lock,
+} from "lucide-react";
 import { LoadSpinner2, LogoF } from "../assets";
 import {
-  listPubHospEqSlot,
+  // listPubHospEqSlot,
   listPubHospEqSlot2,
   searchResource,
 } from "../services/otherServices";
 import { toast } from "sonner";
+import { HederaBadge } from "./HospitalDashboard";
 
 function Button({ children, className = "", ...props }) {
   return (
@@ -30,6 +41,17 @@ function Card({ children, className = "", onClick }) {
   );
 }
 
+function formatDateTime(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function PublicSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -41,6 +63,9 @@ export default function PublicSearch() {
   const [gettingLocation, setGettingLocation] = useState(false);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
+  const [slots, setSlots] = useState();
+  const [step, setStep] = useState("loading"); // loading | slots | success
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -113,7 +138,7 @@ export default function PublicSearch() {
     if (res) {
       const filtrd = res?.map((it) => {
         return {
-          id: it?.id,
+          id: it?.hospitalId,
           name: it?.hospitalName,
           resource: it?.resourceType,
           distance: `${it?.distanceKm.toFixed(2)}km`,
@@ -130,10 +155,23 @@ export default function PublicSearch() {
     }
   };
 
+  // useEffect(() => {
   const chkAva = async (id) => {
+    // setChkAv(true);
+
     const res = await listPubHospEqSlot2(id);
-    console.log(res);
+
+    if (res) {
+      // setChkAv(false);
+      setSlots(res);
+      setStep("slots");
+      console.log(res);
+    }
   };
+
+  // chkAva(selected?.id);
+  // }, [selected]);
+  // console.log(selected);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-emerald-950 via-teal-900 to-slate-950 text-white  relative">
@@ -151,6 +189,34 @@ export default function PublicSearch() {
           {locationGranted && "Location Enabled"}
         </Button>
       </nav>
+
+      <div className="w-full mt-10 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-10 text-center shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-emerald-400/20 blur-3xl rounded-full"></div>
+        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-teal-400/20 blur-3xl rounded-full"></div>
+
+        <div className="relative z-10">
+          <div className="flex justify-center mb-4">
+            <Shield className="text-emerald-400" size={40} />
+          </div>
+
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            Beyond access, LifeChain also preserves life-saving truth.
+          </h1>
+
+          <p className="text-emerald-300 max-w-xl mx-auto mb-8">
+            Securely store critical medical or personal information that can be
+            released when it matters most.
+          </p>
+
+          <Button
+            // onClick={() => setOpen(true)}
+            className="flex items-center gap-2 mx-auto"
+          >
+            <Lock size={18} /> Create Secure Vault Entry
+          </Button>
+        </div>
+      </div>
+
       <div className="p-6 pt-20">
         <div className="max-w-6xl mx-auto">
           {/* Search Bar */}
@@ -194,7 +260,7 @@ export default function PublicSearch() {
           </div>
 
           {/* Map + Results */}
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-6">
             <div className="col-span-2 h-[400px] rounded-2xl bg-linear-to-br from-slate-900 to-emerald-900 border border-white/10 relative overflow-hidden">
               {/* User */}
               <div className="absolute top-[50%] left-[40%] flex flex-col items-center">
@@ -229,12 +295,16 @@ export default function PublicSearch() {
                   <Card
                     key={r.id}
                     className="cursor-pointer hover:bg-white/10"
-                    onClick={() => setSelected(r)}
+                    onClick={() => {
+                      setSelected(r);
+                      // chkAva(r.id);
+                    }}
                   >
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-bold">{r.name}</h3>
                         <p className="text-sm text-emerald-300">{r.resource}</p>
+                        <HederaBadge txId={r.hederaTxId} />
                         <div className="flex items-center gap-2 text-xs text-emerald-400 mt-2">
                           <MapPin size={14} /> {r.distance}
                         </div>
@@ -262,10 +332,82 @@ export default function PublicSearch() {
         {/* Modal */}
         {selected && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
-            <div className="bg-emerald-950 p-6 rounded-2xl border border-white/10 w-[300px]">
+            <div className="bg-emerald-950 p-6 rounded-2xl border border-white/10 w-full max-w-lg">
               <h2 className="text-xl font-bold mb-2">{selected.name}</h2>
               <p className="text-emerald-300">{selected.resource}</p>
               <p className="text-sm mt-2">Distance: {selected.distance}</p>
+              {step === "loading" && (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm text-emerald-300">
+                    Checking availability...
+                  </p>
+                </div>
+              )}
+
+              {step === "slots" && (
+                <div className="space-y-3 my-6">
+                  <p className="text-sm font-semibold text-emerald-300 mb-2">
+                    Available Slots
+                  </p>
+
+                  {slots.map((slot) => (
+                    <div
+                      key={slot.id}
+                      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3"
+                    >
+                      <div>
+                        <p className="font-semibold">
+                          {formatDateTime(slot.slot_time)}
+                        </p>
+                        <p className="text-xs text-emerald-300 flex items-center gap-1">
+                          <Clock size={12} /> {slot.slot_type}
+                        </p>
+                      </div>
+
+                      <Button
+                        className="px-3 py-1 text-sm"
+                        onClick={() => setStep("success")}
+                      >
+                        Take Slot
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {step === "success" && (
+                <div className="text-center space-y-4">
+                  <CheckCircle className="mx-auto text-emerald-400" size={40} />
+
+                  <h3 className="font-bold text-lg">Slot Reserved</h3>
+
+                  <p className="text-sm text-emerald-300">
+                    An email has been sent with your slot details.
+                    <br />
+                    Create an account to manage your booking.
+                  </p>
+
+                  <div className="space-y-2">
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter email to join waitlist"
+                      className="w-full p-3 rounded-xl bg-white/10 border border-white/20 outline-none"
+                    />
+
+                    <Button
+                      className="w-full"
+                      onClick={() => {
+                        alert("Joined waitlist successfully");
+                        window.location.reload();
+                      }}
+                    >
+                      Join Waitlist
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Button className="mt-4 w-full" onClick={() => setSelected(null)}>
                 Close
               </Button>
