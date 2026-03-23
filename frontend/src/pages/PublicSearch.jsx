@@ -169,9 +169,9 @@ export default function PublicSearch() {
     }
   };
 
-  // chkAva(selected?.id);
-  // }, [selected]);
-  // console.log(selected);
+  const takeSlot = async () => {
+    const req = { hospitalId: 1, slotId: 1 };
+  };
 
   return (
     <div className="min-h-screen bg-linear-to-br from-emerald-950 via-teal-900 to-slate-950 text-white  relative">
