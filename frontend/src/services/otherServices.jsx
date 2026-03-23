@@ -60,9 +60,9 @@ export const listResource = async (token) => {
   }
 };
 
-export const listPubResource = async () => {
+export const listPubResource = async (type) => {
   try {
-    const url = `${BASE_URL}/resources/search`;
+    const url = `${BASE_URL}/resources/search?resourceType=${type}`;
     const response = await axios.get(url, axiosConfigJustAPI());
 
     return handleResponse(response);
@@ -144,10 +144,10 @@ export const listEqSlot = async () => {
   }
 };
 
-export const createBooking = async (token, params) => {
+export const createBooking = async (params) => {
   try {
     const url = `${BASE_URL}/booking/create`;
-    const response = await axios.post(url, params, axiosConfig(token));
+    const response = await axios.post(url, params, axiosConfigJustAPI());
 
     return handleResponse(response);
   } catch (error) {

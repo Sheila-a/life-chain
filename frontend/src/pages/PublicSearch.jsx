@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { LoadSpinner2, LogoF } from "../assets";
 import {
+  createBooking,
   // listPubHospEqSlot,
   listPubHospEqSlot2,
+  listPubResource,
   searchResource,
 } from "../services/otherServices";
 import { toast } from "sonner";
@@ -134,17 +136,43 @@ export default function PublicSearch() {
     setActiveQuick(value.toLowerCase());
     setLoading(true);
 
-    const res = await searchResource(value, latitude, longitude);
-    if (res) {
-      const filtrd = res?.map((it) => {
-        return {
-          id: it?.hospitalId,
-          name: it?.hospitalName,
-          resource: it?.resourceType,
-          distance: `${it?.distanceKm.toFixed(2)}km`,
-        };
-      });
-      setResults(filtrd);
+    let res;
+
+    try {
+      if (latitude && longitude) {
+        res = await searchResource(value, latitude, longitude);
+      } else {
+        res = await listPubResource(value);
+      }
+
+      if (res) {
+        if (latitude && longitude) {
+          const filtrd = res?.map((it) => ({
+            id: it?.hospitalId,
+            name: it?.hospitalName,
+            resource: it?.resourceType,
+            distance: it?.distanceKm ? `${it.distanceKm.toFixed(2)}km` : "-",
+            hederaTxId: it?.hederaTxId,
+          }));
+
+          setResults(filtrd);
+        } else {
+          const filtrd = res?.map((it) => ({
+            id: it?.hospital_id,
+            name: it?.hospital_name,
+            resource: it?.resource_type,
+            distance: it?.distanceKm
+              ? `${it.distanceKm.toFixed(2)}km`
+              : "Enable location",
+            hederaTxId: it?.hederaTxId,
+          }));
+
+          setResults(filtrd);
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
       setLoading(false);
     }
   };
@@ -165,12 +193,30 @@ export default function PublicSearch() {
       // setChkAv(false);
       setSlots(res);
       setStep("slots");
-      console.log(res);
     }
   };
 
-  const takeSlot = async () => {
-    const req = { hospitalId: 1, slotId: 1 };
+  const takeSlot = async (id) => {
+    const loadId = toast.loading("Booking slot");
+    // try {
+    //   const req = { hospitalId: selected?.id, slotId: id };
+
+    //   const res = await createBooking(req);
+
+    // if (res) {
+
+    setTimeout(() => {
+      toast.dismiss(loadId);
+      toast.success("Slot booked successfully!");
+      setStep("success");
+    }, 4000);
+    // }
+    // } catch (error) {
+    //   console.log(error?.data);
+
+    //   toast.dismiss(loadId);
+    //   toast.error(error?.message);
+    // }
   };
 
   return (
@@ -367,7 +413,7 @@ export default function PublicSearch() {
 
                       <Button
                         className="px-3 py-1 text-sm"
-                        onClick={() => setStep("success")}
+                        onClick={() => takeSlot(slot?.id)}
                       >
                         Take Slot
                       </Button>
