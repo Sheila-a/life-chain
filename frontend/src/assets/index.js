@@ -1,4 +1,5 @@
 import LoadSpinner from "./loading-spinner.svg";
+import LoadSpinner2 from "./loading-spinner copy.svg";
 import N404 from "./404.svg";
 import Upload from "./upload.svg";
 import logout from "./logout.svg";
@@ -13,6 +14,7 @@ import LogoF from "./logo-full.png";
 
 export {
   LoadSpinner,
+  LoadSpinner2,
   N404,
   Upload,
   logout,

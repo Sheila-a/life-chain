@@ -38,7 +38,7 @@ const handleResponse = (response) => {
 
 export const updateResource = async (token, params) => {
   try {
-    const url = `${BASE_URL}/resource/update`;
+    const url = `${BASE_URL}/resource-updates`;
     const response = await axios.post(url, params, axiosConfig(token));
 
     return handleResponse(response);
@@ -48,9 +48,33 @@ export const updateResource = async (token, params) => {
   }
 };
 
-export const searchResource = async (token, hid, type) => {
+export const listResource = async (token) => {
   try {
-    const url = `${BASE_URL}/resources/search?resourceType=${type}&hospitalId=${hid}`;
+    const url = `${BASE_URL}/resources/me`;
+    const response = await axios.get(url, axiosConfig(token));
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const listPubResource = async () => {
+  try {
+    const url = `${BASE_URL}/resources/search`;
+    const response = await axios.get(url, axiosConfigJustAPI());
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const searchResource = async (type, lat, long) => {
+  try {
+    const url = `${BASE_URL}/resources/nearest?resourceType=${type}&lat=${lat}&long=${long}`;
     const response = await axios.get(url, axiosConfigJustAPI());
 
     return handleResponse(response);
@@ -64,6 +88,42 @@ export const createEqSlot = async (token, params) => {
   try {
     const url = `${BASE_URL}/equipment/create`;
     const response = await axios.post(url, params, axiosConfig(token));
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const listHospEqSlot = async (token) => {
+  try {
+    const url = `${BASE_URL}/equipment/me`;
+    const response = await axios.get(url, axiosConfig(token));
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const listPubHospEqSlot1 = async () => {
+  try {
+    const url = `${BASE_URL}/equipment/list`;
+    const response = await axios.get(url, axiosConfigJustAPI());
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const listPubHospEqSlot2 = async (hospitalId) => {
+  try {
+    const url = `${BASE_URL}/equipment/list?hospitalId=${hospitalId}`;
+    const response = await axios.get(url, axiosConfigJustAPI());
 
     return handleResponse(response);
   } catch (error) {

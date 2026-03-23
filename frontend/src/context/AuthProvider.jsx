@@ -1,10 +1,10 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from "react";
 
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const getInitialState = () => {
-    const authString = sessionStorage.getItem('fusempraut');
+    const authString = sessionStorage.getItem("lifaufethch");
     try {
       const authDetails = JSON.parse(authString);
       return authDetails || { success: false };
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    sessionStorage.setItem("fusempraut", JSON.stringify(auth));
+    sessionStorage.setItem("lifaufethch", JSON.stringify(auth));
     // sessionStorage.setItem('isopisrslt', isPoints);
     sessionStorage.setItem("ranotlf", notifCount);
     sessionStorage.setItem("reqrsluy", query);

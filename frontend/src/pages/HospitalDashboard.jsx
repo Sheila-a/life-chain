@@ -38,7 +38,7 @@ const HospitalDashboard = () => {
   const fetchData = useCallback(async () => {
     try {
       const [res, res2] = await Promise.all([
-        listHospEqSlot(),
+        listHospEqSlot(auth?.token),
         listResource(auth?.token),
       ]);
       if (res) setEquipmentSlots(res);

@@ -1,6 +1,12 @@
-import { useState } from "react";
-import { Search, MapPin, Activity, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, MapPin, Activity, User, Pin } from "lucide-react";
 import { LoadSpinner2, LogoF } from "../assets";
+import {
+  listPubHospEqSlot,
+  listPubHospEqSlot2,
+  searchResource,
+} from "../services/otherServices";
+import { toast } from "sonner";
 
 function Button({ children, className = "", ...props }) {
   return (
@@ -24,33 +30,98 @@ function Card({ children, className = "", onClick }) {
   );
 }
 
-const MOCK_HOSPITALS = [
-  { id: 1, name: "City General Hospital", resource: "MRI", distance: "2.1km" },
-  { id: 2, name: "LifeCare Clinic", resource: "MRI", distance: "4.5km" },
-  { id: 3, name: "Hope Medical", resource: "ICU", distance: "3.2km" },
-];
-
 export default function PublicSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeQuick, setActiveQuick] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [locationGranted, setLocationGranted] = useState(false);
 
-  const handleSearch = (value) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowLocationPrompt(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const checkLocationPermission = async () => {
+    try {
+      const permission = await navigator.permissions.query({
+        name: "geolocation",
+      });
+
+      if (permission.state === "denied") {
+        toast.error(
+          "Location is blocked. Please enable it in browser settings.",
+        );
+        return false;
+      }
+
+      return true;
+    } catch {
+      return true;
+    }
+  };
+
+  const handleGetLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation not supported");
+      return;
+    }
+
+    const allowed = await checkLocationPermission();
+    if (!allowed) return;
+
+    setGettingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude);
+        setLongitude(position.coords.longitude);
+        setGettingLocation(false);
+        setLocationGranted(true);
+        setShowLocationPrompt(false);
+
+        toast.success("Location enabled!");
+      },
+      (error) => {
+        setGettingLocation(false);
+        toast.error(error?.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
+  };
+
+  const handleSearch = async (value) => {
     if (!value) return;
 
     setQuery(value);
     setActiveQuick(value.toLowerCase());
     setLoading(true);
 
-    setTimeout(() => {
-      const filtered = MOCK_HOSPITALS.filter((h) =>
-        h.resource.toLowerCase().includes(value.toLowerCase()),
-      );
-      setResults(filtered);
+    const res = await searchResource(value, latitude, longitude);
+    if (res) {
+      const filtrd = res?.map((it) => {
+        return {
+          id: it?.id,
+          name: it?.hospitalName,
+          resource: it?.resourceType,
+          distance: `${it?.distanceKm.toFixed(2)}km`,
+        };
+      });
+      setResults(filtrd);
       setLoading(false);
-    }, 800);
+    }
   };
 
   const handleEnter = (e) => {
@@ -59,10 +130,26 @@ export default function PublicSearch() {
     }
   };
 
+  const chkAva = async (id) => {
+    const res = await listPubHospEqSlot2(id);
+    console.log(res);
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-emerald-950 via-teal-900 to-slate-950 text-white  relative">
-      <nav className="bg-white p-3">
+      <nav className="bg-white p-3 flex justify-between items-center">
         <img src={LogoF} alt="" className="w-44" />
+        <Button
+          type="button"
+          variant="outline"
+          className={`w-fit text-sm flex gap-2 items-center ${
+            locationGranted ? "bg-green-600 hover:bg-green-700" : ""
+          }`}
+          onClick={handleGetLocation}
+        >
+          <Pin size={20} />
+          {locationGranted && "Location Enabled"}
+        </Button>
       </nav>
       <div className="p-6 pt-20">
         <div className="max-w-6xl mx-auto">
@@ -82,7 +169,7 @@ export default function PublicSearch() {
 
           {/* Quick Cards */}
           <div className="grid grid-cols-3 gap-4 mb-10">
-            {["MRI", "ICU", "Anti-Venom"].map((item) => {
+            {["MRI", "ICU bed", "Anti-Venom"].map((item) => {
               const isActive = activeQuick === item.toLowerCase();
 
               return (
@@ -144,10 +231,15 @@ export default function PublicSearch() {
                     className="cursor-pointer hover:bg-white/10"
                     onClick={() => setSelected(r)}
                   >
-                    <h3 className="font-bold">{r.name}</h3>
-                    <p className="text-sm text-emerald-300">{r.resource}</p>
-                    <div className="flex items-center gap-2 text-xs text-emerald-400 mt-2">
-                      <MapPin size={14} /> {r.distance}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold">{r.name}</h3>
+                        <p className="text-sm text-emerald-300">{r.resource}</p>
+                        <div className="flex items-center gap-2 text-xs text-emerald-400 mt-2">
+                          <MapPin size={14} /> {r.distance}
+                        </div>
+                      </div>
+                      <Button onClick={() => chkAva(r.id)}>Book</Button>
                     </div>
                   </Card>
                 ))
@@ -181,6 +273,35 @@ export default function PublicSearch() {
           </div>
         )}
       </div>
+
+      {showLocationPrompt && !locationGranted && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-emerald-950 p-6 rounded-2xl border border-white/10 w-[90%] max-w-md text-center">
+            <MapPin className="mx-auto mb-4 text-emerald-400" size={40} />
+
+            <h2 className="text-xl font-bold mb-2">Enable Location</h2>
+
+            <p className="text-sm text-emerald-300 mb-6">
+              We use your location to show hospitals and resources closest to
+              you for faster help.
+            </p>
+
+            <div className="flex gap-3">
+              <Button className="w-full" onClick={handleGetLocation}>
+                {gettingLocation ? "Enabling..." : "Allow Location"}
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowLocationPrompt(false)}
+              >
+                Not Now
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,8 @@ import PrivateRoute from "./routes/PrivateRoute";
 import HomePage from "./pages/Home";
 import HospitalLogin from "./pages/HospitalLogin";
 import HospitalRegister from "./pages/HospitalRegister";
+import HospitalDashboard from "./pages/HospitalDashboard";
+import PublicSearch from "./pages/PublicSearch";
 
 function App() {
   const location = useLocation();
@@ -36,9 +38,13 @@ function App() {
             <Route path="" element={<HomePage />} />
             <Route path="portal" element={<HospitalLogin />} />
             <Route path="portal/new" element={<HospitalRegister />} />
+            <Route path="search" element={<PublicSearch />} />
             {/* <Route path="create-account" element={<Register />} />
             <Route path="verify" element={<VerifyOtp />} /> */}
           </Route>
+          {/* <Route path="/dashboard" element={<PrivateRoute />}> */}
+          <Route path="/dashboard" element={<HospitalDashboard />} />
+          {/* </Route> */}
         </Routes>
       )}
     </>
