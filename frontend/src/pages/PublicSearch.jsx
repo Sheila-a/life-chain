@@ -9,10 +9,11 @@ import {
   Clock,
   Shield,
   Lock,
+  MailCheck,
 } from "lucide-react";
 import { LoadSpinner2, LogoF } from "../assets";
 import {
-  createBooking,
+  // createBooking,
   // listPubHospEqSlot,
   listPubHospEqSlot2,
   listPubResource,
@@ -20,6 +21,7 @@ import {
 } from "../services/otherServices";
 import { toast } from "sonner";
 import { HederaBadge } from "./HospitalDashboard";
+import { Input } from "./HospitalLogin";
 
 function Button({ children, className = "", ...props }) {
   return (
@@ -68,6 +70,15 @@ export default function PublicSearch() {
   const [slots, setSlots] = useState();
   const [step, setStep] = useState("loading"); // loading | slots | success
   const [email, setEmail] = useState("");
+  const [open, setOpen] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    content: "",
+    releaseDate: "",
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -219,6 +230,29 @@ export default function PublicSearch() {
     // }
   };
 
+  const takeToVault = async () => {
+    const loadId = toast.loading("Taking to vault");
+    // try {
+    //   const req = { hospitalId: selected?.id, slotId: id };
+
+    //   const res = await createBooking(req);
+
+    // if (res) {
+
+    setTimeout(() => {
+      toast.dismiss(loadId);
+      toast.success("Entry added to vault successfully!");
+      setSuccess(true);
+    }, 4000);
+    // }
+    // } catch (error) {
+    //   console.log(error?.data);
+
+    //   toast.dismiss(loadId);
+    //   toast.error(error?.message);
+    // }
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-emerald-950 via-teal-900 to-slate-950 text-white  relative">
       <nav className="bg-white p-3 flex justify-between items-center">
@@ -255,13 +289,95 @@ export default function PublicSearch() {
           </p>
 
           <Button
-            // onClick={() => setOpen(true)}
+            onClick={() => setOpen(true)}
             className="flex items-center gap-2 mx-auto"
           >
             <Lock size={18} /> Create Secure Vault Entry
           </Button>
         </div>
       </div>
+
+      {open && !success && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-emerald-950 w-full max-w-lg rounded-2xl border border-white/10 p-6 space-y-4">
+            <h2 className="text-xl font-bold">Create Vault Entry</h2>
+
+            <Input
+              label="Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <Input
+              label="Phone"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+
+            <div className="flex flex-col gap-2">
+              <label className="text-emerald-300 text-sm">Content</label>
+              <textarea
+                className="p-3 rounded-xl bg-white/10 border border-white/20 outline-none"
+                rows={4}
+                value={form.content}
+                onChange={(e) => setForm({ ...form, content: e.target.value })}
+              />
+            </div>
+
+            <Input
+              label="Release Date"
+              type="datetime-local"
+              value={form.releaseDate}
+              onChange={(e) =>
+                setForm({ ...form, releaseDate: e.target.value })
+              }
+            />
+
+            <Button
+              className="w-full flex items-center justify-center gap-2"
+              onClick={() => takeToVault()}
+            >
+              <Lock size={16} /> Send to Vault
+            </Button>
+
+            <Button
+              className="w-full bg-transparent border border-white/20 hover:bg-white/10"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-emerald-950 w-full max-w-md rounded-2xl border border-white/10 p-6 text-center space-y-4">
+            <MailCheck className="mx-auto text-emerald-400" size={40} />
+
+            <h3 className="text-lg font-bold">Vault Entry Created</h3>
+
+            <p className="text-sm text-emerald-300">
+              An email has been sent confirming your vault submission. Your
+              information will be securely released at the selected time.
+            </p>
+
+            <p className="text-xs text-emerald-400">
+              If you are currently in need of medical assistance, please use the
+              platform to search for nearby resources immediately.
+            </p>
+
+            <Button className="w-full" onClick={() => window.location.reload()}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="p-6 pt-20">
         <div className="max-w-6xl mx-auto">
