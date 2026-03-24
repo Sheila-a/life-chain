@@ -113,12 +113,15 @@ export class EquipmentService {
     return this.listSlots(String(hospitalId), onlyAvailable);
   }
 
-  async createBooking(body: { hospitalId?: number; slotId?: number }, user?: { hospitalId: number }) {
-    const hospitalId = Number(user?.hospitalId ?? body.hospitalId);
+  async createBooking(
+    body: { hospitalId?: number; slotId?: number; name?: string; email?: string; phone?: string },
+    user?: { hospitalId: number }
+  ) {
+    const hospitalId = user?.hospitalId ? Number(user.hospitalId) : null;
     const slotId = Number(body.slotId);
 
-    if (!hospitalId || !slotId) {
-      throw new BadRequestException('hospitalId and slotId are required');
+    if (!slotId) {
+      throw new BadRequestException('slotId is required');
     }
 
     const update = await this.db.run(
@@ -131,29 +134,23 @@ export class EquipmentService {
     }
 
     const bookedAt = new Date().toISOString();
+    const bookingContact = await this.resolveBookingContact(hospitalId, body);
     const bookingInsert = await this.db.run(
-      'INSERT INTO bookings (slot_id, hospital_id, booked_at) VALUES (?, ?, ?)',
-      [slotId, hospitalId, bookedAt]
+      'INSERT INTO bookings (slot_id, hospital_id, booking_name, booking_email, booking_phone, booked_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [slotId, hospitalId, bookingContact.name, bookingContact.email, bookingContact.phone, bookedAt]
     );
 
     const bookingId = Number(bookingInsert.lastInsertRowid);
-    const hospital = (
-      await this.db.query<{
-        name: string;
-        email: string;
-        phone: string | null;
-      }>('SELECT name, email, phone FROM hospitals WHERE id = ? LIMIT 1', [hospitalId])
-    )[0];
-
     const signedPayload = await this.kmsService.signPayload({
       eventType: 'EQUIPMENT_BOOKING',
       bookingId,
       hospitalId,
       slotId,
       bookedAt,
-      hospitalName: hospital?.name ?? null,
-      hospitalEmail: hospital?.email ?? null,
-      hospitalPhone: hospital?.phone ?? null
+      contactName: bookingContact.name,
+      contactEmail: bookingContact.email,
+      contactPhone: bookingContact.phone,
+      bookingSource: hospitalId ? 'hospital-admin' : 'guest'
     });
 
     const hcs = await this.hederaService.submitConsensusMessage({
@@ -162,9 +159,10 @@ export class EquipmentService {
       hospitalId,
       slotId,
       bookedAt,
-      hospitalName: hospital?.name ?? null,
-      hospitalEmail: hospital?.email ?? null,
-      hospitalPhone: hospital?.phone ?? null,
+      contactName: bookingContact.name,
+      contactEmail: bookingContact.email,
+      contactPhone: bookingContact.phone,
+      bookingSource: hospitalId ? 'hospital-admin' : 'guest',
       signature: signedPayload.signature,
       payloadHash: signedPayload.payloadHash,
       kmsKeyId: signedPayload.kmsKeyId
@@ -179,9 +177,9 @@ export class EquipmentService {
       id: bookingId,
       slotId,
       hospitalId,
-      name: hospital?.name ?? null,
-      email: hospital?.email ?? null,
-      phone: hospital?.phone ?? null,
+      name: bookingContact.name,
+      email: bookingContact.email,
+      phone: bookingContact.phone,
       bookedAt,
       hederaTopicId: hcs.topicId,
       hederaTxId: hcs.txId,
@@ -189,5 +187,40 @@ export class EquipmentService {
       payloadHash: signedPayload.payloadHash,
       kmsKeyId: signedPayload.kmsKeyId
     };
+  }
+
+  private async resolveBookingContact(
+    hospitalId: number | null,
+    body: { name?: string; email?: string; phone?: string }
+  ) {
+    if (hospitalId) {
+      const hospital = (
+        await this.db.query<{
+          name: string;
+          email: string;
+          phone: string | null;
+        }>('SELECT name, email, phone FROM hospitals WHERE id = ? LIMIT 1', [hospitalId])
+      )[0];
+
+      if (!hospital) {
+        throw new BadRequestException('Authenticated hospital account was not found');
+      }
+
+      return {
+        name: hospital.name,
+        email: hospital.email,
+        phone: hospital.phone
+      };
+    }
+
+    const name = body.name?.trim();
+    const email = body.email?.trim();
+    const phone = body.phone?.trim();
+
+    if (!name || !email || !phone) {
+      throw new BadRequestException('name, email, and phone are required for guest bookings');
+    }
+
+    return { name, email, phone };
   }
 }

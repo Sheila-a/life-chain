@@ -329,6 +329,66 @@ describe('LifeChain Phase 2 API', () => {
     await request(app.getHttpServer()).get('/api/audit/bookings/9999').expect(404);
   });
 
+  it('allows unauthenticated guest users to create a booking when they provide contact details', async () => {
+    await registerHospital(app, 'Owner Hospital', 'owner@example.org', 6.5, 3.3);
+    const ownerToken = await loginHospital(app, 'owner@example.org');
+
+    const slotResponse = await request(app.getHttpServer())
+      .post('/api/equipment/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        slotType: 'ICU',
+        slotTime: '2026-04-01T10:00:00.000Z'
+      })
+      .expect(201);
+
+    const guestBookingResponse = await request(app.getHttpServer())
+      .post('/api/booking/create')
+      .send({
+        slotId: slotResponse.body.id,
+        name: 'Guest Booker',
+        email: 'guest@example.org',
+        phone: '+2348000000000'
+      })
+      .expect(201);
+
+    expect(guestBookingResponse.body).toMatchObject({
+      slotId: slotResponse.body.id,
+      hospitalId: null,
+      name: 'Guest Booker',
+      email: 'guest@example.org',
+      phone: '+2348000000000'
+    });
+    expect(guestBookingResponse.body.hederaTxId).toContain('0.0.7002@');
+
+    const guestAuditResponse = await request(app.getHttpServer())
+      .get(`/api/audit/bookings/${guestBookingResponse.body.id}`)
+      .expect(200);
+
+    expect(guestAuditResponse.body).toMatchObject({
+      id: guestBookingResponse.body.id,
+      hospitalId: null,
+      name: 'Guest Booker',
+      email: 'guest@example.org',
+      phone: '+2348000000000',
+      auditStatus: 'verified-stored'
+    });
+
+    const secondSlotResponse = await request(app.getHttpServer())
+      .post('/api/equipment/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        slotType: 'ICU',
+        slotTime: '2026-04-02T10:00:00.000Z'
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/api/booking/create')
+      .send({ slotId: secondSlotResponse.body.id })
+      .expect(400);
+  });
+
   it('uploads vaults, blocks early release, allows late release, and exposes vault audit data', async () => {
     const hospital = await registerHospital(app, 'Vault Hospital', 'vault@example.org', 6.4, 3.2);
     const token = await loginHospital(app, 'vault@example.org');

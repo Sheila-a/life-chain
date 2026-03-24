@@ -73,10 +73,14 @@ export class EquipmentController {
       required: ['slotId'],
       properties: {
         hospitalId: { type: 'number', example: 1, nullable: true },
-        slotId: { type: 'number', example: 1 }
+        slotId: { type: 'number', example: 1 },
+        name: { type: 'string', example: 'Jane Doe', nullable: true },
+        email: { type: 'string', example: 'jane@example.org', nullable: true },
+        phone: { type: 'string', example: '+2348012345678', nullable: true }
       }
     },
-    description: 'Books an available slot, logs booking event to Hedera HCS, and stores tx ID.'
+    description:
+      'Books an available slot. Authenticated hospital admins use their profile contact details automatically. Unauthenticated guest bookings must provide name, email, and phone.'
   })
   @ApiResponse({
     status: 201,
@@ -86,7 +90,7 @@ export class EquipmentController {
       properties: {
         id: { type: 'number', example: 1 },
         slotId: { type: 'number', example: 1 },
-        hospitalId: { type: 'number', example: 2 },
+        hospitalId: { type: 'number', example: 2, nullable: true },
         name: { type: 'string', example: 'Booking Hospital' },
         email: { type: 'string', example: 'booker@example.org' },
         phone: { type: 'string', example: '+2348012345678', nullable: true },
@@ -100,7 +104,7 @@ export class EquipmentController {
     }
   })
   createBooking(
-    @Body() body: { hospitalId?: number; slotId?: number },
+    @Body() body: { hospitalId?: number; slotId?: number; name?: string; email?: string; phone?: string },
     @Req() req: { user?: { hospitalId: number } }
   ) {
     return this.equipmentService.createBooking(body, req.user);
