@@ -318,7 +318,7 @@ const HospitalDashboard = () => {
               />
             </div>
 
-            <div className="mt-5 w-fit grid lg:grid-cols-2 gap-10">
+            <div className="mt-5 w-fit grid lg:grid-cols-2 overflow-scroll gap-10">
               <ResourceRegistry
                 resources={resources}
                 setOpenModal={setOpenModal}
