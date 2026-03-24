@@ -60,13 +60,16 @@ export class AuditService {
         id: number;
         slot_id: number;
         hospital_id: number;
+        booking_name: string | null;
+        booking_email: string | null;
+        booking_phone: string | null;
         booked_at: string;
         hedera_tx_id: string | null;
         kms_signature: string | null;
         payload_hash: string | null;
         kms_key_id: string | null;
       }>(
-        'SELECT id, slot_id, hospital_id, booked_at, hedera_tx_id, kms_signature, payload_hash, kms_key_id FROM bookings WHERE id = ? LIMIT 1',
+        'SELECT id, slot_id, hospital_id, booking_name, booking_email, booking_phone, booked_at, hedera_tx_id, kms_signature, payload_hash, kms_key_id FROM bookings WHERE id = ? LIMIT 1',
         [id]
       )
     )[0];
@@ -82,6 +85,9 @@ export class AuditService {
       type: 'booking',
       hospitalId: record.hospital_id,
       slotId: record.slot_id,
+      name: record.booking_name,
+      email: record.booking_email,
+      phone: record.booking_phone,
       bookedAt: record.booked_at,
       hederaTopicId: topicId,
       hederaTransactionId: record.hedera_tx_id,

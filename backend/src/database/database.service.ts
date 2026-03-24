@@ -140,7 +140,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE TABLE IF NOT EXISTS bookings (
         id BIGSERIAL PRIMARY KEY,
         slot_id BIGINT NOT NULL REFERENCES equipment_slots(id),
-        hospital_id BIGINT NOT NULL REFERENCES hospitals(id),
+        hospital_id BIGINT REFERENCES hospitals(id),
+        booking_name TEXT,
+        booking_email TEXT,
+        booking_phone TEXT,
         booked_at TIMESTAMPTZ NOT NULL,
         hedera_tx_id TEXT,
         kms_signature TEXT,
@@ -174,6 +177,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_signature TEXT;
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payload_hash TEXT;
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_name TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_email TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_phone TEXT;
+      ALTER TABLE bookings ALTER COLUMN hospital_id DROP NOT NULL;
       ALTER TABLE vaults ADD COLUMN IF NOT EXISTS hfs_tx_id TEXT;
       ALTER TABLE vaults ADD COLUMN IF NOT EXISTS kms_signature TEXT;
       ALTER TABLE vaults ADD COLUMN IF NOT EXISTS kms_key_id TEXT;
