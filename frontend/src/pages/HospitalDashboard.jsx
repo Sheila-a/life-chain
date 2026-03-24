@@ -148,7 +148,7 @@ const HospitalDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen flex bg-linear-to-br from-emerald-950 via-teal-900 to-slate-950 text-white">
+    <div className="min-h-screen flex bg-linear-to-br from-emerald-950 via-teal-900 w-full to-slate-950 text-white">
       <CustomModal open={openModal} handleClose={() => setOpenModal(false)}>
         <h2 className="text-2xl font-bold mb-6">
           {teep == "createR" || teep == "createE" ? "Create" : "Update"}{" "}
