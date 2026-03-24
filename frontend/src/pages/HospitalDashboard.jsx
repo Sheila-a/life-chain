@@ -293,7 +293,7 @@ const HospitalDashboard = () => {
           <LogOut className="mr-2" /> Logout
         </Button>
       </aside>
-      <main className="flex-1 p-10 space-y-10">
+      <main className="flex-1 w-full p-10 space-y-10">
         {activeView === "dashboard" && (
           <>
             <h1 className="text-4xl font-bold md:pl-0 pl-6">
